@@ -1513,7 +1513,7 @@ function loginCard(){return h('div',{class:'sec'},
   h('div',{class:'lcd',style:'padding:18px 20px'},h('div',{style:'font-size:22px'},'LA GUANTERA'),h('div',{class:'dim',style:'font-size:14px;margin-top:4px'},'Tu música, desde tu Google Drive.')),
   h('p',{class:'sub',style:'margin:0;max-width:60ch'},'Entra con tu cuenta de asturtalent.org. La app solo lee tu música y guarda tus listas en una zona privada de tu Drive.'),
   h('div',{class:'row'},h('button',{class:'pbtn amber','data-act':'login'},'Entrar con Google'),h('button',{class:'pbtn','data-act':'soundTest'},ic('wave'),'Prueba de sonido')));}
-ACT.login=()=>{if(!navigator.onLine){toast('Sin conexión');return;}AUTH.request();};
+ACT.login=()=>{if(!navigator.onLine){toast('Sin conexión');return;}const ok=AUTH.request();if(!ok){AUTH.redirect();return;}clearTimeout(AUTH.lt);AUTH.lt=setTimeout(()=>{if(!AUTH.ok()&&AUTH.busy){AUTH.busy=false;AUTH.fail('popup');}},2500);};
 ACT.sync=el=>SYNC.run(el.dataset.deep==='1');
 ACT.syncStop=()=>{SYNC.cancel=true;toast('Parando…');};
 
