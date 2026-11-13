@@ -476,7 +476,8 @@ const AUTH={token:null,exp:0,client:null,waiters:[],busy:false,lastAsk:0,
   done(r){this.busy=false;if(!r||r.error){this.fail((r&&r.error)||'error');return;}
     this.token=r.access_token;this.exp=Date.now()+((+r.expires_in||3600)-120)*1000;LS.set('authed',true);
     this.waiters.splice(0).forEach(w=>w.res(this.token));onAuth();},
-  fail(c){this.busy=false;if(c==='popup_failed_to_open')toast('El navegador ha bloqueado la ventana de Google. Permite ventanas emergentes para esta página.',6000);
+  fail(c){this.busy=false;if(/popup/.test(String(c))&&!this.ok())openSheet(h('h3',null,'¿No se ha abierto Google?'),h('p',{class:'sub',style:'margin:0'},'Este navegador no ha dejado abrir la ventana de Google. Puedes entrar en esta misma pantalla.'),
+      h('div',{class:'row',style:'justify-content:flex-end'},h('button',{class:'pbtn ghost',onclick:closeLayer},'Cancelar'),h('button',{class:'pbtn amber',onclick:()=>AUTH.redirect()},'Entrar en esta ventana')));
     this.waiters.splice(0).forEach(w=>w.rej(Object.assign(new Error(c),{code:'auth'})));renderSoon();},
   /* solo dentro de un toque o clic: Google abre una ventana un instante */
   request(){this.lastAsk=Date.now();if(!this.init()){toast('No se pudo cargar el acceso de Google. Revisa la conexión.');return false;}
@@ -484,6 +485,9 @@ const AUTH={token:null,exp:0,client:null,waiters:[],busy:false,lastAsk:0,
   get(wait){if(this.ok())return Promise.resolve(this.token);if(!wait)return Promise.reject(Object.assign(new Error('no_token'),{code:'no_token'}));
     if(!this.busy)toast('Toca la pantalla para reconectar con Google',4000);
     return new Promise((res,rej)=>{const w={res,rej};this.waiters.push(w);setTimeout(()=>{const i=this.waiters.indexOf(w);if(i>=0){this.waiters.splice(i,1);rej(Object.assign(new Error('timeout'),{code:'no_token'}));}},120000);});},
+  redirect(){const st=rid(12);try{sessionStorage.setItem('lg.st',st);}catch{}
+    const p=new URLSearchParams({client_id:CFG.clientId,redirect_uri:location.origin+location.pathname,response_type:'token',scope:CFG.scope,include_granted_scopes:'true',state:st,hd:CFG.hd});
+    if(S.email)p.set('login_hint',S.email);saveStateNow();location.href='https://accounts.google.com/o/oauth2/v2/auth?'+p;},
   signOut(){try{if(this.token&&window.google)google.accounts.oauth2.revoke(this.token,()=>{});}catch{}this.token=null;this.exp=0;LS.set('authed',false);renderAll();}};
 /* cualquier toque renueva el acceso si caduca pronto (la ventana de Google se abre y se cierra sola) */
 document.addEventListener('click',()=>{if(LS.get('authed',false)&&navigator.onLine&&AUTH.soon()&&!AUTH.busy&&Date.now()-AUTH.lastAsk>90e3)AUTH.request();},true);
@@ -1545,6 +1549,9 @@ function firstRunSheet(){openSheet(h('h3',null,'¿Dónde estás abriendo La Guan
   h('div',{class:'steps'},...Object.entries(KIND).map(([k,o])=>h('button',{class:'pbtn'+(device.kind===k?' amber':''),style:'min-height:64px;font-size:17px',onclick:()=>{
     device.kind=k;device.name=o.name;LS.set('dev',device);closeLayer();
     if(k==='car'){prefs.carStart=true;savePrefs();carOn();}else if(document.body.classList.contains('carmode'))carOff();renderAll();}},ic(o.icon),o.name))));}
+(function(){const hs=location.hash;if(!/access_token=|error=/.test(hs))return;const p=new URLSearchParams(hs.slice(1));let ok=true;try{ok=p.get('state')===sessionStorage.getItem('lg.st');}catch{}
+  history.replaceState(null,'',location.pathname);if(p.get('access_token')&&ok)setTimeout(()=>AUTH.done({access_token:p.get('access_token'),expires_in:p.get('expires_in')}),0);
+  else if(p.get('error'))setTimeout(()=>toast('Google no ha dado acceso ('+p.get('error')+').',5000),500);})();
 async function boot(){try{document.documentElement.style.setProperty('--wood-img','url('+woodTexture()+')');}catch{}
   $$('[data-knob]').forEach(bindKnob);
   if(!device){device={id:rid(8),kind:guessKind()};device.name=KIND[device.kind].name;LS.set('dev',device);S.firstRun=true;}
