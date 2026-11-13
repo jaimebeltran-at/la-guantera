@@ -741,7 +741,15 @@ function updateMS(){if(!('mediaSession' in navigator))return;const t=P.current;
     artwork:t.c&&COV.mem.has(t.c)?[{src:COV.mem.get(t.c),sizes:'256x256',type:'image/jpeg'}]:[]}):null;}catch{}}
 function updateMSPos(){try{const d=AE.el;if('mediaSession' in navigator&&isFinite(d.duration)&&d.duration>0)navigator.mediaSession.setPositionState({duration:d.duration,position:Math.min(d.currentTime,d.duration),playbackRate:1});}catch{}}
 (()=>{const ms=navigator.mediaSession;if(!ms)return;const set=(a,f)=>{try{ms.setActionHandler(a,f);}catch{}};
-  set('play',()=>P.resume());set('pause',()=>P.pause());set('nexttrack',()=>P.next());set('previoustrack',()=>P.prev());set('seekto',e=>P.seek(e.seekTime));})();
+  set('play',()=>P.resume());set('pause',()=>P.pause());set('nexttrack',()=>P.next());set('previoustrack',()=>P.prev());set('seekto',e=>P.seek(e.seekTime));
+  /* teclas del volante / de la unidad: por si llegan como teclas en vez de como acciones multimedia */
+  addEventListener('keydown',e=>{const k=e.key,car=document.body.classList.contains('carmode'),ae=/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||''));if(ae)return;
+    let a=null;if(k==='MediaTrackNext'||k==='MediaFastForward'||e.keyCode===176)a='n';else if(k==='MediaTrackPrevious'||k==='MediaRewind'||e.keyCode===177)a='p';else if(k==='MediaPlay')a='r';else if(k==='MediaPause'||k==='MediaStop')a='s';else if(k==='MediaPlayPause'||e.keyCode===179)a='t';
+    if(a){e.preventDefault();if(a==='n')P.next();else if(a==='p')P.prev();else if(a==='r')P.resume();else if(a==='s')P.pause();else P.toggle();if(car&&window.CAR)try{CAR.say(({n:'SIGUIENTE',p:'ANTERIOR',r:'PLAY',s:'PAUSA',t:'PLAY / PAUSA'})[a]+' · MANDO');}catch{}return;}
+    if(car&&window.CAR&&!e.ctrlKey&&!e.metaKey&&k!=='Shift'&&k!=='Tab')try{CAR.say('TECLA '+(k||'?')+' · '+(e.code||e.keyCode));}catch{}},true);
+  addEventListener('keyup',()=>{});
+  const ps=()=>{try{ms.playbackState=AE.el.paused?'paused':'playing';}catch{}};setInterval(ps,2000);
+})();
 
 let wl=null;
 async function wake(){if(!document.body.classList.contains('carmode')||AE.el.paused||wl)return;
