@@ -2736,14 +2736,14 @@ class CarUI extends Component{
     super.closeScr(label);}
 }
 let CAR=null;
-function carFit(){const st=window.$car2stage;if(!st)return;const hs=document.getElementById('car2'),r=hs?hs.getBoundingClientRect():null,w=(r&&r.width)||innerWidth,hh=(r&&r.height)||innerHeight,k=Math.min(w/1024,hh/600);st.style.transform='translate('+((w-1024*k)/2).toFixed(1)+'px,'+((hh-600*k)/2).toFixed(1)+'px) scale('+k.toFixed(4)+')';}
+function carFit(){const st=window.$car2stage;if(!st)return;const hs=document.getElementById('car2'),r=hs?hs.getBoundingClientRect():null,w=(r&&r.width)||innerWidth,hh=(r&&r.height)||innerHeight,k=Math.min(w/1024,hh/600);st.style.transform='scale('+k.toFixed(4)+')';}
 addEventListener('resize',carFit);addEventListener('orientationchange',()=>setTimeout(carFit,300));if(window.visualViewport)visualViewport.addEventListener('resize',carFit);
 function renderCar(){const c=$('#car');if(CAR&&c.firstChild)return;c.textContent='';
   if(!document.getElementById('carFonts')){const l=document.createElement('link');l.id='carFonts';l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Doto:wght@700;900&display=swap';document.head.append(l);}
   const host=h('div',{id:'car2',style:'position:absolute;inset:0;background:#000;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none'});c.append(host);
   const sh=host.attachShadow({mode:'open'});const T=$('#carTpl').content;
   sh.append(T.querySelector('style').cloneNode(true));
-  const stg=document.createElement('div');stg.id='car2stage';stg.style.cssText='position:absolute;left:0;top:0;width:1024px;height:600px;transform-origin:0 0';sh.append(stg);
+  const stg=document.createElement('div');stg.id='car2stage';stg.style.cssText='position:absolute;left:50%;top:50%;margin:-300px 0 0 -512px;width:1024px;height:600px;transform-origin:50% 50%';sh.append(stg);
   window.$car2stage=stg;carFit();try{if(window.ResizeObserver){if(window.__carRO)window.__carRO.disconnect();window.__carRO=new ResizeObserver(carFit);window.__carRO.observe(host);}}catch{}setTimeout(carFit,200);
   if(!CARRT.tpl)CARRT.tpl=CARRT.compile($('#carTpl').content.querySelector('script[type="text/x-tpl"]').textContent);
   try{CAR=new CarUI({});CAR.mount(stg,CARRT.tpl);}catch(e){console.warn('coche',e);CAR=null;c.textContent='';c.append(h('div',{class:'note',style:'margin:40px'},'No se pudo abrir el modo coche: '+(e&&e.message||e)),h('button',{class:'pbtn','data-act':'carOff'},'Salir'));}}
