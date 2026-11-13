@@ -1505,7 +1505,7 @@ const SYNC={running:false,phase:'',done:0,total:0,cancel:false,deep:false,last:L
         e.x=1;}catch(err){if(err&&(err.code==='auth'||err.code==='no_token')){todo.unshift(id);break;}e.x=2;}
       e.ix=Date.now();this.done++;since++;this.phase='Leyendo etiquetas y portadas '+this.done+'/'+this.total;renderSyncSoon();
       if(since>=300){since=0;rebuildIndex();renderSoon();await LIB.save().catch(()=>{});}}};
-    await Promise.all([work(),work(),work()]);rebuildIndex();await LIB.save().catch(()=>{});
+    await Promise.all(Array.from({length:6},work));rebuildIndex();await LIB.save().catch(()=>{});
     this.phase=this.cancel?'Parado. Lo leído ya está guardado.':todo.length?'Se cortó la conexión. Lo leído ya está guardado; vuelve a pulsar para seguir.':'Biblioteca al día: '+plural(S.tracks.size,'canción','canciones')+'.';}};
 const renderSyncSoon=debounce(()=>renderSync(),300);
 
