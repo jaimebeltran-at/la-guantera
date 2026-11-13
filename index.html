@@ -468,13 +468,13 @@ const CFG={clientId:'199748027382-86vrm04ifjnn35rim51karirihofmt82.apps.googleus
   scope:'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.appdata',hd:'asturtalent.org'};
 const G='https://www.googleapis.com/drive/v3',GU='https://www.googleapis.com/upload/drive/v3';
 const AUTH={token:null,exp:0,client:null,waiters:[],busy:false,lastAsk:0,
-  ok(){return!!this.token&&Date.now()<this.exp;},
+  ok(){if(!this.token){const s=LS.get('tok',null);if(s&&s.e>Date.now()){this.token=s.t;this.exp=s.e;}}return!!this.token&&Date.now()<this.exp;},
   soon(){return!this.token||this.exp-Date.now()<20*60e3;},
   init(){if(this.client)return true;if(!(window.google&&google.accounts&&google.accounts.oauth2))return false;
     this.client=google.accounts.oauth2.initTokenClient({client_id:CFG.clientId,scope:CFG.scope,hd:CFG.hd,login_hint:S.email||undefined,
       callback:r=>this.done(r),error_callback:e=>this.fail((e&&e.type)||'popup')});return true;},
   done(r){this.busy=false;if(!r||r.error){this.fail((r&&r.error)||'error');return;}
-    this.token=r.access_token;this.exp=Date.now()+((+r.expires_in||3600)-120)*1000;LS.set('authed',true);
+    this.token=r.access_token;this.exp=Date.now()+((+r.expires_in||3600)-120)*1000;LS.set('authed',true);LS.set('tok',{t:this.token,e:this.exp});
     this.waiters.splice(0).forEach(w=>w.res(this.token));onAuth();},
   fail(c){this.busy=false;if(/popup/.test(String(c))&&!this.ok())openSheet(h('h3',null,'¿No se ha abierto Google?'),h('p',{class:'sub',style:'margin:0'},'Este navegador no ha dejado abrir la ventana de Google. Puedes entrar en esta misma pantalla.'),
       h('div',{class:'row',style:'justify-content:flex-end'},h('button',{class:'pbtn ghost',onclick:closeLayer},'Cancelar'),h('button',{class:'pbtn amber',onclick:()=>AUTH.redirect()},'Entrar en esta ventana')));
@@ -488,13 +488,13 @@ const AUTH={token:null,exp:0,client:null,waiters:[],busy:false,lastAsk:0,
   redirect(){const st=rid(12);try{sessionStorage.setItem('lg.st',st);}catch{}
     const p=new URLSearchParams({client_id:CFG.clientId,redirect_uri:location.origin+location.pathname,response_type:'token',scope:CFG.scope,include_granted_scopes:'true',state:st,hd:CFG.hd});
     if(S.email)p.set('login_hint',S.email);saveStateNow();location.href='https://accounts.google.com/o/oauth2/v2/auth?'+p;},
-  signOut(){try{if(this.token&&window.google)google.accounts.oauth2.revoke(this.token,()=>{});}catch{}this.token=null;this.exp=0;LS.set('authed',false);renderAll();}};
+  signOut(){try{if(this.token&&window.google)google.accounts.oauth2.revoke(this.token,()=>{});}catch{}this.token=null;this.exp=0;LS.set('authed',false);LS.set('tok',null);renderAll();}};
 /* cualquier toque renueva el acceso si caduca pronto (la ventana de Google se abre y se cierra sola) */
 document.addEventListener('click',()=>{if(LS.get('authed',false)&&navigator.onLine&&AUTH.soon()&&!AUTH.busy&&Date.now()-AUTH.lastAsk>90e3)AUTH.request();},true);
 
 async function gfetch(url,opt={},wait=false){const tok=await AUTH.get(wait);
   const r=await fetch(url,Object.assign({},opt,{headers:Object.assign({},opt.headers,{Authorization:'Bearer '+tok})}));
-  if(r.status===401){AUTH.token=null;AUTH.exp=0;renderSoon();throw Object.assign(new Error('auth'),{code:'auth'});}
+  if(r.status===401){AUTH.token=null;AUTH.exp=0;LS.set('tok',null);renderSoon();throw Object.assign(new Error('auth'),{code:'auth'});}
   if(!r.ok)throw Object.assign(new Error('HTTP '+r.status),{code:'http',status:r.status});return r;}
 const gjson=(path,params,wait)=>gfetch(G+path+(params?'?'+new URLSearchParams(params):''),{},wait).then(r=>r.json());
 
@@ -1421,10 +1421,13 @@ function viewSettings(v){v.append(h('h1',null,'Ajustes'));
 /* ===================== leer canciones de tu Drive ===================== */
 const JUNK=/\s*[\[(【]([^\])】]*?)\b(official|oficial|video|v[ií]deo|audio|lyrics?|letra|visuali[sz]er|hd|hq|4k|remaster(ed)?|clip|mv|videoclip|en vivo|live)\b([^\])】]*)[\])】]/gi;
 const cleanArtist=a=>String(a||'').replace(/\s*-\s*Topic$/i,'').replace(/VEVO$/,'').replace(/\s*Official$/i,'').trim();
-function nameMeta(fn,dir){let base=String(fn).replace(/\.[^.]+$/,'').replace(/_/g,' ');
-  base=base.replace(JUNK,'').replace(/\s+(official|oficial)\s+(music\s+)?(video|audio)\s*$/i,'').replace(/\s{2,}/g,' ').trim();
-  let a='',t=base;const m=base.split(/\s+[-–—|]\s+/);if(m.length>=2){a=m[0].trim();t=m.slice(1).join(' - ').trim();}
-  return{t:(t.replace(/^["“']+|["”']+$/g,'').trim()||String(fn)).slice(0,200),a:cleanArtist(a).slice(0,160),al:(dir||'').slice(0,200)};}
+const cleanTitle=s=>String(s||'').replace(JUNK,'').replace(/\s+(official|oficial)\s+(music\s+)?(video|audio)\s*$/i,'').replace(/\s{2,}/g,' ').replace(/^["“']+|["”']+$/g,'').trim();
+/* carpeta Artista / "Año - Álbum" / "NN - Título.mp3", o "Artista - Título.mp3" suelto */
+function nameMeta(fn,path){path=path||[];let base=cleanTitle(String(fn).replace(/\.[^.]+$/,'').replace(/_/g,' '));
+  let n=0;const mn=base.match(/^(\d{1,3})\s*[-.)]\s*(.+)$/);if(mn){n=+mn[1];base=mn[2].trim();}
+  let a='',t=base;if(!path[0]){const m=base.split(/\s+[-–—|]\s+/);if(m.length>=2){a=m[0].trim();t=m.slice(1).join(' - ').trim();}}
+  let al='',y='';const ad=path[1]||'';if(ad){const my=ad.match(/^(\d{4})\s*[-–.]\s*(.+)$/);if(my){y=my[1];al=my[2].trim();}else al=ad;}
+  return{t:(t||String(fn)).slice(0,200),a:(cleanArtist(a)||path[0]||'').slice(0,160),al:al.slice(0,200),y,n};}
 const u32=(b,o)=>((b[o]<<24)>>>0)+(b[o+1]<<16)+(b[o+2]<<8)+b[o+3];
 const synch=(b,o)=>((b[o]&127)<<21)|((b[o+1]&127)<<14)|((b[o+2]&127)<<7)|(b[o+3]&127);
 function dec(d,enc){try{if(enc===0)return new TextDecoder('windows-1252').decode(d);if(enc===3)return new TextDecoder('utf-8').decode(d);
@@ -1468,18 +1471,21 @@ const SYNC={running:false,phase:'',done:0,total:0,cancel:false,deep:false,last:L
   async folderId(){const name=(S.cfg.folder||'YouTube MP3').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const j=await gjson('/files',{q:`name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,fields:'files(id,name)',pageSize:10,supportsAllDrives:true,includeItemsFromAllDrives:true});
     if(!j.files.length)throw{code:'no_folder'};return j.files[0].id;},
-  async listAudio(root){const out=[],queue=[{id:root,name:''}];
-    while(queue.length&&!this.cancel){const dir=queue.shift();let pt='';
-      do{const p={q:`'${dir.id}' in parents and trashed=false`,fields:'nextPageToken,files(id,name,mimeType,size,modifiedTime)',pageSize:1000,supportsAllDrives:true,includeItemsFromAllDrives:true};if(pt)p.pageToken=pt;
-        const j=await gjson('/files',p);for(const f of j.files){if(f.mimeType==='application/vnd.google-apps.folder')queue.push({id:f.id,name:f.name});
-          else if(/^audio\//.test(f.mimeType)||AUDIO_EXT.test(f.name))out.push({id:f.id,n:f.name,mt:f.mimeType,sz:+f.size||0,m:f.modifiedTime,dir:dir.name});}
-        pt=j.nextPageToken;this.phase='Buscando canciones… '+out.length;renderSyncSoon();}while(pt&&!this.cancel);}return out;},
+  async listAudio(root){const out=[],info=new Map([[root,[]]]);let level=[root],folders=0;
+    while(level.length&&!this.cancel){const next=[];
+      for(let i=0;i<level.length&&!this.cancel;i+=40){const q='('+level.slice(i,i+40).map(id=>`'${id}' in parents`).join(' or ')+') and trashed=false';let pt='';
+        do{const p={q,fields:'nextPageToken,files(id,name,mimeType,size,modifiedTime,parents)',pageSize:1000,supportsAllDrives:true,includeItemsFromAllDrives:true};if(pt)p.pageToken=pt;
+          const j=await gjson('/files',p);for(const f of j.files){const par=(f.parents||[]).find(x=>info.has(x));const path=par?info.get(par):[];
+            if(f.mimeType==='application/vnd.google-apps.folder'){info.set(f.id,[...path,f.name]);next.push(f.id);folders++;}
+            else if(/^audio\//.test(f.mimeType)||AUDIO_EXT.test(f.name))out.push({id:f.id,n:f.name,mt:f.mimeType,sz:+f.size||0,m:f.modifiedTime,path});}
+          pt=j.nextPageToken;this.phase='Buscando canciones… '+out.length+' (en '+folders+' carpetas)';renderSyncSoon();}while(pt&&!this.cancel);}
+      level=next;}return out;},
   async run(deep){if(this.running)return;if(!AUTH.ok()){toast('Conéctate con Google primero');return;}
     Object.assign(this,{running:true,cancel:false,deep,done:0,total:0,phase:'Buscando la carpeta «'+S.cfg.folder+'»…'});renderSyncSoon();renderSoon();
     try{const fid=await this.folderId();const files=await this.listAudio(fid);if(this.cancel)throw{code:'cancel'};
       const idx=LIB.idx&&LIB.idx.folder===fid?structuredClone(LIB.idx):{v:1,folder:fid,tracks:{}};const seen=new Set();let added=0,removed=0;
       for(const f of files){seen.add(f.id);const e=idx.tracks[f.id];
-        if(!e||e.m!==f.m){idx.tracks[f.id]=Object.assign(nameMeta(f.n,f.dir),{n:0,sz:f.sz,m:f.m,mt:f.mt,fn:f.n,ad:e?e.ad:Date.now(),x:0,ix:Date.now()});added++;}}
+        if(!e||e.m!==f.m){idx.tracks[f.id]=Object.assign(nameMeta(f.n,f.path),{sz:f.sz,m:f.m,mt:f.mt,fn:f.n,ad:e?e.ad:Date.now(),x:0,ix:Date.now()});added++;}}
       for(const id in idx.tracks)if(!seen.has(id)){delete idx.tracks[id];removed++;}
       LIB.idx=idx;rebuildIndex();renderSoon();if(added||removed||!LIB.idx.at)await LIB.save();
       this.last=Date.now();LS.set('lastSync',this.last);
@@ -1492,7 +1498,7 @@ const SYNC={running:false,phase:'',done:0,total:0,cancel:false,deep:false,last:L
     let since=0;const covers=idx.cv||(idx.cv={});
     const work=async()=>{while(todo.length&&!this.cancel&&AUTH.ok()){const id=todo.shift(),e=idx.tracks[id];if(!e)continue;
       try{const tg=await readTags({id,n:e.fn,mt:e.mt,sz:e.sz});
-        if(tg.t){const nm=nameMeta(tg.t+'.x','');e.t=nm.t;if(nm.a&&!tg.a)e.a=nm.a;}if(tg.a)e.a=cleanArtist(tg.a)||e.a;if(tg.aa)e.aa=cleanArtist(tg.aa);
+        if(tg.t)e.t=cleanTitle(tg.t).slice(0,200)||e.t;if(tg.a)e.a=cleanArtist(tg.a)||e.a;if(tg.aa)e.aa=cleanArtist(tg.aa);
         if(tg.al)e.al=tg.al.slice(0,200);if(tg.y)e.y=tg.y;if(tg.g)e.g=tg.g;if(tg.n)e.n=tg.n;if(tg.d>1)e.d=tg.d;if(tg.du)e.du=tg.du;
         if(tg.pic&&tg.pic.data&&tg.pic.data.length>200){const hk=hashStr(String(tg.pic.data.length)+':'+Array.from(tg.pic.data.subarray(0,512)).join(','));
           if(covers[hk])e.c=covers[hk];else{const cb=await coverBlob(tg.pic);if(cb){const cid=await upload('c-'+id+'.jpg',cb);covers[hk]=cid;e.c=cid;}}}
@@ -1560,9 +1566,9 @@ async function boot(){try{document.documentElement.style.setProperty('--wood-img
   if(hv==='coche'||prefs.carStart||(S.firstRun&&device.kind==='car'))carOn();
   await Promise.all([SY.loadLocal(),LIB.loadLocal()]);
   try{const st=await IDB.get('kv','stats');if(st&&st.ym===ym()&&st.dev===device.id){S.stats=st;S.statsId=statsName();}}catch{}
-  DL.init();renderAll();
+  DL.init();renderAll();if(AUTH.ok())onAuth();
   if(S.firstRun)setTimeout(firstRunSheet,700);
-  if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});}
+  if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});}
 boot();
 </script>
 <script src="https://accounts.google.com/gsi/client" async onload="gisReady()"></script>
