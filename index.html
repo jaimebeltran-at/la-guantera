@@ -666,11 +666,11 @@ const P={q:[],orig:null,qi:-1,shuffle:false,repeat:'off',src:'',
     if(this.shuffle){const first=ids[start];this.q=[first,...shuffleArr(ids.filter((_,i)=>i!==start))];await this.load(0);}
     else{this.q=ids.slice();await this.load(start);}},
   async load(i,{autoplay=true,pos=0}={}){endListen();if(AE.xf)cancelXf();
-    this.qi=i;const t=this.current;if(!t)return;onTrackChange();let url;
-    try{url=await srcFor(t);}catch(e){if(this.current!==t)return;AE.errs++;
+    this.qi=i;const lt=this.lt=(this.lt||0)+1;const t=this.current;if(!t)return;onTrackChange();let url;
+    try{url=await srcFor(t);}catch(e){if(this.lt!==lt)return;AE.errs++;
       toast(e.code==='offline'?'Sin conexión y «'+(t.t||'')+'» no está descargada':e.code==='no_token'||e.code==='auth'?'Toca la pantalla para reconectar con Google':'No se pudo cargar «'+(t.t||'')+'»');
-      if(e.code!=='no_token'&&e.code!=='auth'&&AE.errs<4&&this.qi+1<this.q.length)setTimeout(()=>{if(this.current===t)this.load(this.qi+1);},1200);else AE.errs=0;renderPlayer();return;}
-    if(this.current!==t)return;
+      if(e.code!=='no_token'&&e.code!=='auth'&&AE.errs<4&&this.qi+1<this.q.length)setTimeout(()=>{if(this.lt===lt)this.load(this.qi+1);},1200);else AE.errs=0;renderPlayer();return;}
+    if(this.lt!==lt)return;
     setDeckSrc(AE.cur,url);
     if(pos>0){const d=AE.el,once=()=>{try{d.currentTime=pos;}catch{}d.removeEventListener('loadedmetadata',once);};d.addEventListener('loadedmetadata',once);}
     startListen(t);renderPlayer();saveState();if(autoplay)await this.resume();},
@@ -716,7 +716,7 @@ AE.decks.forEach((d,i)=>{
   d.addEventListener('seeking',()=>{if(i===AE.cur)L.last=null;});
   d.addEventListener('error',()=>{if(i!==AE.cur||!d.getAttribute('src'))return;const t=P.current;if(!t)return;
     AE.errs++;toast('No se pudo reproducir «'+(t.t||'')+'»');
-    if(AE.errs<4)setTimeout(()=>{if(P.current===t)P.next(true);},1200);else{AE.errs=0;renderPlayer();}});});
+    if(AE.errs<4)setTimeout(()=>{if(P.current&&P.current.id===t.id)P.next(true);},1200);else{AE.errs=0;renderPlayer();}});});
 
 function maybeXf(){if(AE.xf||!AE.n||!prefs.fx||prefs.xf<=0||P.repeat==='one')return;const d=AE.el,dur=d.duration;
   if(!isFinite(dur)||dur<prefs.xf*2+6||dur-d.currentTime>prefs.xf)return;const ni=P.nextIdx(false);if(ni==null)return;startXf(ni);}
@@ -1504,7 +1504,7 @@ const SYNC={running:false,phase:'',done:0,total:0,cancel:false,deep:false,last:L
           if(covers[hk])e.c=covers[hk];else{const cb=await coverBlob(tg.pic);if(cb){const cid=await upload('c-'+id+'.jpg',cb);covers[hk]=cid;e.c=cid;}}}
         e.x=1;}catch(err){if(err&&(err.code==='auth'||err.code==='no_token')){todo.unshift(id);break;}e.x=2;}
       e.ix=Date.now();this.done++;since++;this.phase='Leyendo etiquetas y portadas '+this.done+'/'+this.total;renderSyncSoon();
-      if(since>=40){since=0;rebuildIndex();renderSoon();await LIB.save().catch(()=>{});}}};
+      if(since>=300){since=0;rebuildIndex();renderSoon();await LIB.save().catch(()=>{});}}};
     await Promise.all([work(),work(),work()]);rebuildIndex();await LIB.save().catch(()=>{});
     this.phase=this.cancel?'Parado. Lo leído ya está guardado.':todo.length?'Se cortó la conexión. Lo leído ya está guardado; vuelve a pulsar para seguir.':'Biblioteca al día: '+plural(S.tracks.size,'canción','canciones')+'.';}};
 const renderSyncSoon=debounce(()=>renderSync(),300);
@@ -1539,7 +1539,7 @@ async function onAuth(){renderAll();const was=firstAuth;firstAuth=false;
   if(!S.email){try{const j=await gjson('/about',{fields:'user(emailAddress)'});S.email=j.user.emailAddress;LS.set('email',S.email);}catch{}}
   try{await AD.list();}catch{}
   await Promise.all([SY.pullAll().catch(()=>{}),LIB.pull().catch(()=>{}),loadStats()]);
-  if(was){const stale=Date.now()-SYNC.last>15*60e3;if(!LIB.idx||stale)SYNC.run(device&&device.kind==='pc'&&!LIB.idx);}
+  if(was){const pend=device&&device.kind==='pc'&&(!LIB.idx||Object.values(LIB.idx.tracks).some(e=>!e.x));const stale=Date.now()-SYNC.last>15*60e3;if(!LIB.idx||stale||pend)SYNC.run(pend);}
   DL.sync();if(S.stats)pushStats();renderAll();}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AUTH.ok()&&Date.now()-SY.lastPull>60e3){SY.pullAll().catch(()=>{});LIB.pull().catch(()=>{});}});
 window.gisReady=()=>{AUTH.init();};
