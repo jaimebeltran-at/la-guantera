@@ -744,6 +744,7 @@ function updateMSPos(){try{const d=AE.el;if('mediaSession' in navigator&&isFinit
   set('play',()=>P.resume());set('pause',()=>P.pause());set('nexttrack',()=>P.next());set('previoustrack',()=>P.prev());set('seekto',e=>P.seek(e.seekTime));
   /* teclas del volante / de la unidad: por si llegan como teclas en vez de como acciones multimedia */
   addEventListener('keydown',e=>{const k=e.key,car=document.body.classList.contains('carmode'),ae=/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||''));if(ae)return;
+    if(k==='AudioVolumeMute'||e.keyCode===173||e.keyCode===164){e.preventDefault();if(window.CAR)try{CAR.mute();}catch{}else{const m=!AE.el.muted;AE.decks.forEach(d=>{d.muted=m;});toast(m?'Silencio':'Sonido');}return;}
     let a=null;if(k==='MediaTrackNext'||k==='MediaFastForward'||e.keyCode===176)a='n';else if(k==='MediaTrackPrevious'||k==='MediaRewind'||e.keyCode===177)a='p';else if(k==='MediaPlay')a='r';else if(k==='MediaPause'||k==='MediaStop')a='s';else if(k==='MediaPlayPause'||e.keyCode===179)a='t';
     if(a){e.preventDefault();if(a==='n')P.next();else if(a==='p')P.prev();else if(a==='r')P.resume();else if(a==='s')P.pause();else P.toggle();if(car&&window.CAR)try{CAR.say(({n:'SIGUIENTE',p:'ANTERIOR',r:'PLAY',s:'PAUSA',t:'PLAY / PAUSA'})[a]+' · MANDO');}catch{}return;}
     if(car&&window.CAR&&!e.ctrlKey&&!e.metaKey&&k!=='Shift'&&k!=='Tab')try{CAR.say('TECLA '+(k||'?')+' · '+(e.code||e.keyCode));}catch{}},true);
@@ -1173,7 +1174,8 @@ function openEq(){const g=AE.gains();
 
 /* modo coche */
 const carBtn=(act,icon,label)=>h('button',{class:'pbtn','data-act':act,'aria-label':label},ic(icon));
-function carOn(){document.body.classList.add('carmode');closeNp();closeLayer();$('#car').hidden=false;$('#app').setAttribute('aria-hidden','true');renderCar();wake();
+function goFull(){try{const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen({navigationUI:'hide'}).catch(()=>{});}catch{}}
+function carOn(){document.body.classList.add('carmode');goFull();document.addEventListener('pointerdown',goFull,{once:true,capture:true});closeNp();closeLayer();$('#car').hidden=false;$('#app').setAttribute('aria-hidden','true');renderCar();wake();
   try{history.replaceState(null,'','#coche');}catch{}}
 function carOff(){document.body.classList.remove('carmode');if(typeof CAR!=='undefined'&&CAR){try{CAR.unmount();}catch(e){}CAR=null;}$('#car').hidden=true;$('#car').textContent='';$('#app').removeAttribute('aria-hidden');
   try{if(wl)wl.release();}catch{}wl=null;try{history.replaceState(null,'','#'+S.view);}catch{}renderPlayer(true);}
