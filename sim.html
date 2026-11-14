@@ -20,7 +20,6 @@ iframe{position:absolute;left:0;border:0;background:#000}
 <h1>LA GUANTERA · SIMULADOR DE LA TABLET (1024×600)</h1>
 <div class="bar">
   <select id="mode"><option value="full">Pantalla completa / icono instalado</option><option value="chrome">Dentro de Chrome (con barras)</option></select>
-  <select id="lite"><option value="">Modo ligero: automático</option><option value="1">Modo ligero: sí</option><option value="0">Modo ligero: no</option></select>
   <select id="zoom"><option value="fit">Ajustar a la ventana</option><option value="1">Tamaño real</option></select>
   <button id="reload">Recargar</button>
 </div>
@@ -29,16 +28,16 @@ iframe{position:absolute;left:0;border:0;background:#000}
   <b style="color:var(--mu)">Mandos del volante / radio:</b>
   <button data-k="MediaTrackPrevious">⏮ Anterior</button><button data-k="MediaPlayPause">⏯ Play/Pausa</button><button data-k="MediaTrackNext">⏭ Siguiente</button><button data-k="AudioVolumeMute">🔇 Mute</button>
 </div>
-<p class="note">Simula la pantalla de la radio del Mercedes: 1024×600 píxeles, táctil con el ratón. Lo que no puede simular es lo lenta que es la tablet; para eso fuerza "Modo ligero: sí". Para medir velocidad de verdad: F12 → Rendimiento → CPU 6× más lenta.</p>
+<p class="note">Simula la pantalla de la radio del Mercedes: 1024×600 píxeles, táctil con el ratón. Lo que no puede simular es lo lenta que es la tablet: para acercarte, F12 → Rendimiento → CPU 6× más lenta. Doble toque en la portada = me gusta.</p>
 <script>
 const W=1024,H=600,f=document.getElementById('f'),scr=document.getElementById('scr'),$=id=>document.getElementById(id);
-function load(){const m=$('mode').value,l=$('lite').value,ch=m==='chrome';$('chrome').style.display=ch?'flex':'none';
+function load(){const m=$('mode').value,ch=m==='chrome';$('chrome').style.display=ch?'flex':'none';
   const top=ch?128:0;f.style.top=top+'px';f.style.width=W+'px';f.style.height=(H-top)+'px';
-  f.src='./'+(l?'?lite='+l:'')+'#coche';fit();}
+  f.src='./#coche';fit();}
 function fit(){const z=$('zoom').value;let k=1;if(z==='fit'){k=Math.min(1,(innerWidth-110)/W,(innerHeight-230)/H);}
   scr.style.width=W*k+'px';scr.style.height=H*k+'px';[...scr.children].forEach(c=>{c.style.transform='scale('+k+')';c.style.transformOrigin='0 0';c.style.width=c.id==='f'?W+'px':W+'px';});
   $('chrome').style.width=W+'px';}
-['mode','lite'].forEach(i=>$(i).onchange=load);$('zoom').onchange=fit;$('reload').onclick=load;addEventListener('resize',fit);
+$('mode').onchange=load;$('zoom').onchange=fit;$('reload').onclick=load;addEventListener('resize',fit);
 document.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{const w=f.contentWindow;if(!w)return;const k=b.dataset.k;
   w.dispatchEvent(new w.KeyboardEvent('keydown',{key:k,code:k,bubbles:true,cancelable:true}));f.focus();});
 load();
