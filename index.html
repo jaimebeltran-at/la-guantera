@@ -2753,7 +2753,7 @@ let CAR=null;
 function carFit(){const st=window.$car2stage;if(!st)return;const hs=document.getElementById('car2'),r=hs?hs.getBoundingClientRect():null,w=(r&&r.width)||innerWidth,hh=(r&&r.height)||innerHeight,k=Math.min(w/1024,hh/600);st.style.transform='scale('+k.toFixed(4)+')';}
 addEventListener('resize',carFit);addEventListener('orientationchange',()=>setTimeout(carFit,300));if(window.visualViewport)visualViewport.addEventListener('resize',carFit);
 /* modo ligero: la tablet del coche va justa; fuera parpadeos, filtros animados, mezclas y máscaras */
-function carLite(){if(prefs.lite===true||prefs.lite===false)return prefs.lite;const a=LS.get('liteAuto',null);if(a!==null)return !!a;
+function carLite(){const q=new URLSearchParams(location.search).get('lite');if(q==='1'||q==='0')return q==='1';if(prefs.lite===true||prefs.lite===false)return prefs.lite;const a=LS.get('liteAuto',null);if(a!==null)return !!a;
   return /Android/i.test(navigator.userAgent)&&((navigator.deviceMemory||4)<=4||(navigator.hardwareConcurrency||8)<=4);}
 function liteCss(sheet){const out=[],K=/^(bulb|bulbF|snowA|scanM)$/;
   try{for(const r of sheet.cssRules){if(!r.selectorText||!r.style)continue;const an=(r.style.animationName||'').split(',').map(x=>x.trim());
