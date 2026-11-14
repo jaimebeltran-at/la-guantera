@@ -1613,7 +1613,7 @@ button{-webkit-tap-highlight-color:transparent}
 .dots{position:absolute;left:.75px;top:.75px;width:4.5px;height:4.5px;border-radius:50%}
 .scanw{position:absolute;left:0;top:0;width:264px;height:264px;overflow:hidden;pointer-events:none}
 .scan{position:absolute;left:0;right:0;top:-64px;height:64px;opacity:0;background:linear-gradient(180deg,transparent 0%,rgba(255,226,190,.035) 34%,rgba(255,234,206,.11) 60%,rgba(255,248,236,.24) 71%,rgba(255,238,215,.07) 79%,transparent 100%);filter:brightness(var(--sb,1)) opacity(var(--so,1));will-change:transform;-webkit-mask-image:linear-gradient(90deg,rgba(0,0,0,.35) 0%,#000 13%,rgba(0,0,0,.6) 31%,#000 49%,rgba(0,0,0,.78) 64%,rgba(0,0,0,.42) 83%,#000 100%);mask-image:linear-gradient(90deg,rgba(0,0,0,.35) 0%,#000 13%,rgba(0,0,0,.6) 31%,#000 49%,rgba(0,0,0,.78) 64%,rgba(0,0,0,.42) 83%,#000 100%);-webkit-mask-size:220% 100%;mask-size:220% 100%;animation:none}
-.scan::after{content:"";position:absolute;left:0;right:0;top:45px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,252,244,.22) 18%,rgba(255,252,244,.08) 40%,rgba(255,252,244,.26) 63%,transparent);opacity:var(--b23,1)}
+.scan::after{content:"";position:absolute;left:0;right:0;top:45px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,252,244,.22) 18%,rgba(255,252,244,.08) 40%,rgba(255,252,244,.26) 63%,transparent);animation:bulb 2.3s infinite}
 @keyframes scanP{0%{transform:translateY(0);opacity:0}5%{opacity:1}91%{opacity:1}100%{transform:translateY(330px);opacity:0}}
 @keyframes scanM{from{-webkit-mask-position:0 0;mask-position:0 0}to{-webkit-mask-position:-120% 0;mask-position:-120% 0}}
 .dv{flex:none;width:1px;align-self:stretch;margin:20px 16px;background:#1b1c1f}
@@ -1644,7 +1644,7 @@ button{-webkit-tap-highlight-color:transparent}
 .dial{position:absolute;border-radius:16px;overflow:hidden;background:linear-gradient(#0d0a07,#060504);box-shadow:inset 0 0 0 2px #1b1c1f,inset 0 10px 24px rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.07)}
 .dial .glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(120% 60% at 50% 100%,rgba(255,140,40,.13),transparent 70%),linear-gradient(160deg,rgba(255,255,255,.07),transparent 35%)}
 .dial .hd{position:absolute;left:0;right:0;top:11px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:.26em;color:#9a6a3c}
-.dial .sc{position:absolute;left:0;right:0;top:36px;height:216px}
+.dial .sc{position:absolute;left:0;right:0;top:36px;height:216px;animation:bulb 6.7s infinite}
 .dial .needle{position:absolute;left:6px;right:6px;height:3px;margin-top:-1.5px;border-radius:2px;background:#ff3d1a;box-shadow:0 0 10px #ff4a1a,0 0 22px rgba(255,74,26,.5)}
 .dial .needle.snap{transition:top .4s cubic-bezier(.3,1.4,.5,1)}
 .dial .ft{position:absolute;left:0;right:0;bottom:10px;text-align:center;font-family:'Doto',monospace;font-weight:900;font-size:14px;color:#ffb35c;text-shadow:0 0 6px rgba(255,140,40,.6)}
@@ -1661,13 +1661,13 @@ button{-webkit-tap-highlight-color:transparent}
 .k1 .lamp{position:absolute;bottom:22px;width:46px;height:8px;border-radius:2px;background:#2a1607;box-shadow:inset 0 1px 2px #000}
 .k1:active,.k1.dn{transform:perspective(420px) rotateX(-6deg) translateY(7px);box-shadow:inset 0 -4px 6px rgba(0,0,0,.45),0 2px 0 #0a0a0b,0 3px 0 #000,0 5px 6px rgba(0,0,0,.6)}
 .k1:active .lamp,.k1.dn .lamp,.k1.push.lit .lamp{background:#2a1607;box-shadow:inset 0 1px 2px #000;animation:none}
-.k1 .lamp::after{content:"";position:absolute;left:3px;right:3px;top:50%;height:3px;margin-top:-1.5px;border-radius:2px;background:linear-gradient(90deg,#b04a0c,#ff8a24 20%,#ffae58 50%,#ff8a24 80%,#b04a0c);box-shadow:0 0 4px #ff8a1f,0 0 10px rgba(255,138,31,.85),0 0 22px rgba(255,130,30,.45),0 0 40px rgba(255,115,20,.2);display:none;opacity:var(--b39,1)}
+.k1 .lamp::after{content:"";position:absolute;left:3px;right:3px;top:50%;height:3px;margin-top:-1.5px;border-radius:2px;background:linear-gradient(90deg,#b04a0c,#ff8a24 20%,#ffae58 50%,#ff8a24 80%,#b04a0c);box-shadow:0 0 4px #ff8a1f,0 0 10px rgba(255,138,31,.85),0 0 22px rgba(255,130,30,.45),0 0 40px rgba(255,115,20,.2);display:none;animation:bulb 3.9s infinite}
 .k1:active .lamp::after,.k1.dn .lamp::after,.k1.push.lit .lamp::after{display:block}
 .k1 .kspill{position:absolute;left:8px;right:8px;bottom:6px;height:64px;border-radius:0 0 12px 12px;background:radial-gradient(55% 60% at 50% 82%,rgba(255,138,31,.28),transparent 75%);opacity:0;transition:opacity .25s;pointer-events:none}
 .k1.dn .kspill,.k1:active .kspill,.k1.push.lit .kspill{opacity:1;background:radial-gradient(50% 50% at 50% 78%,rgba(255,140,40,.17),transparent 70%);animation:bulb 3.9s infinite}
 /* play / pausa: el mismo rojo que la aguja del dial (línea fina, mismo brillo, mismo parpadeo) */
 .k1.pp:active .lamp,.k1.pp.dn .lamp{background:#2a1607;box-shadow:inset 0 1px 2px #000;animation:none}
-.k1.pp .lamp::after{content:"";position:absolute;left:3px;right:3px;top:50%;height:3px;margin-top:-1.5px;border-radius:2px;background:linear-gradient(90deg,#c22a10,#ff5a2a 20%,#ff7a4a 50%,#ff5a2a 80%,#c22a10);box-shadow:0 0 4px #ff4a1a,0 0 10px #ff4a1a,0 0 22px rgba(255,74,26,.55),0 0 40px rgba(255,60,20,.25);display:none;opacity:var(--b43,1)}
+.k1.pp .lamp::after{content:"";position:absolute;left:3px;right:3px;top:50%;height:3px;margin-top:-1.5px;border-radius:2px;background:linear-gradient(90deg,#c22a10,#ff5a2a 20%,#ff7a4a 50%,#ff5a2a 80%,#c22a10);box-shadow:0 0 4px #ff4a1a,0 0 10px #ff4a1a,0 0 22px rgba(255,74,26,.55),0 0 40px rgba(255,60,20,.25);display:none;animation:bulb 4.3s infinite}
 .k1.pp:active .lamp::after,.k1.pp.dn .lamp::after{display:block}
 .k1.pp:active .kspill,.k1.pp.dn .kspill{background:radial-gradient(50% 50% at 50% 78%,rgba(255,80,30,.2),transparent 70%);animation:bulb 4.3s infinite}
 
@@ -1713,7 +1713,7 @@ button{-webkit-tap-highlight-color:transparent}
 .k1.dn .lgl,.k1.lit .lgl,.k1.pp:active .lgl{opacity:1;filter:brightness(1) hue-rotate(0deg) drop-shadow(0 0 .5px rgba(255,196,120,.45)) drop-shadow(0 0 0 rgba(0,0,0,0));transition:opacity .2s ease-in,filter .36s ease-in}
 .k1.pp .lgl{filter:brightness(.45) hue-rotate(-12deg) drop-shadow(0 0 .5px rgba(255,140,110,.4)) drop-shadow(0 0 0 rgba(0,0,0,0))}
 .k1.pp.dn .lgl,.k1.pp:active .lgl{filter:brightness(1) hue-rotate(0deg) drop-shadow(0 0 .5px rgba(255,140,110,.4)) drop-shadow(0 0 0 rgba(0,0,0,0))}
-.lgf{display:flex;flex-direction:column;align-items:center;gap:12px;opacity:var(--f47,1)}
+.lgf{display:flex;flex-direction:column;align-items:center;gap:12px}
 .lgf .lt{display:block;width:100%;text-align:center}
 .mi{display:block;width:30px;height:30px;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center}
 .lspill{position:absolute;left:-6px;right:-6px;top:-18px;height:96px;background:radial-gradient(42% 46% at 50% 44%,rgba(255,140,40,.13),transparent 72%)}
@@ -1772,7 +1772,7 @@ button{-webkit-tap-highlight-color:transparent}
 /* Claude DJ: pulsas, hablas y Claude monta la lista. Vúmetro analógico retroiluminado para la voz */
 .djov{position:absolute;inset:0;font-family:'Doto',monospace;font-weight:900;color:#ff8a1f;text-shadow:0 0 8px rgba(255,120,20,.55)}
 .vu{position:absolute;left:22px;top:22px;width:262px;height:188px;padding:5px;box-sizing:border-box;border-radius:10px;background:linear-gradient(180deg,#46474b,#1b1c1e 60%,#111213);box-shadow:0 0 0 1px #000,inset 0 1px 0 rgba(255,255,255,.16),0 5px 12px rgba(0,0,0,.85)}
-.vuface{position:relative;width:252px;height:178px;border-radius:6px;overflow:hidden;background:radial-gradient(115% 95% at 50% 92%,#ffe6b4 0%,#ffcb78 30%,#f29d3a 62%,#b4561a 100%);box-shadow:inset 0 0 22px rgba(70,20,0,.65),inset 0 2px 6px rgba(0,0,0,.55);opacity:var(--f53,1)}
+.vuface{position:relative;width:252px;height:178px;border-radius:6px;overflow:hidden;background:radial-gradient(115% 95% at 50% 92%,#ffe6b4 0%,#ffcb78 30%,#f29d3a 62%,#b4561a 100%);box-shadow:inset 0 0 22px rgba(70,20,0,.65),inset 0 2px 6px rgba(0,0,0,.55);animation:bulbO 5.3s infinite}
 .vuface::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(90,40,0,.2) .6px,transparent .9px),radial-gradient(rgba(255,255,255,.14) .5px,transparent .8px);background-size:3px 3px,5px 4px;background-position:0 0,1px 2px;pointer-events:none}
 .vusc{position:absolute;left:0;top:0;width:252px;height:178px}
 .vusc .pc{font-size:8px}
@@ -1803,11 +1803,11 @@ button{-webkit-tap-highlight-color:transparent}
 .k1.cyc .trio>span{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:9px;letter-spacing:.12em;color:#8f8a80}
 .k1.cyc .tl{width:24px;height:6px;border-radius:2px;background:#2a1607;box-shadow:inset 0 1px 2px #000;transition:background .2s,box-shadow .2s}
 .k1.cyc .tl{position:relative}
-.k1.cyc .tl.on::after,.djmic.on::after{content:"";position:absolute;left:2px;right:2px;top:50%;height:2px;margin-top:-1px;border-radius:1px;background:linear-gradient(90deg,#b04a0c,#ff8a24 20%,#ffae58 50%,#ff8a24 80%,#b04a0c);box-shadow:0 0 3px #ff8a1f,0 0 8px rgba(255,138,31,.7),0 0 16px rgba(255,125,25,.3);opacity:var(--b44,1)}
+.k1.cyc .tl.on::after,.djmic.on::after{content:"";position:absolute;left:2px;right:2px;top:50%;height:2px;margin-top:-1px;border-radius:1px;background:linear-gradient(90deg,#b04a0c,#ff8a24 20%,#ffae58 50%,#ff8a24 80%,#b04a0c);box-shadow:0 0 3px #ff8a1f,0 0 8px rgba(255,138,31,.7),0 0 16px rgba(255,125,25,.3);animation:bulb 4.4s infinite}
 .k1.cyc .tl.on+span,.k1.cyc .trio>span.on{color:#ffb35c}
 .swipe{position:absolute;inset:0;cursor:grab;touch-action:pan-y}
-.krow>*:nth-child(2n) .lamp::after{opacity:var(--b47,1)}.krow>*:nth-child(2n) .kspill{animation-duration:4.7s}
-.krow>*:nth-child(3n) .lamp::after{opacity:var(--b53,1)}.krow>*:nth-child(3n) .kspill{animation-duration:5.3s}
+.krow>*:nth-child(2n) .lamp::after{animation:bulb 4.7s infinite}.krow>*:nth-child(2n) .kspill{animation-duration:4.7s}
+.krow>*:nth-child(3n) .lamp::after{animation:bulb 5.3s infinite}.krow>*:nth-child(3n) .kspill{animation-duration:5.3s}
 
 /* tecla basculante aleatorio / repetir */
 .rk{position:relative;flex:1 1 0;min-width:0;height:198px;perspective:520px}
@@ -1821,25 +1821,26 @@ button{-webkit-tap-highlight-color:transparent}
 .rk .h.on{color:#ffb35c}
 .rk .mid{height:2px;margin:0 10px;background:#08090a;box-shadow:0 1px 0 rgba(255,255,255,.07)}
 .rk .lp{width:34px;height:6px;border-radius:2px;background:#2a1607;box-shadow:inset 0 1px 2px #000;transition:background .25s,box-shadow .25s}
-.rk .h.on .lp{background:#ff8a1f;box-shadow:0 0 10px #ff8a1f,0 0 22px rgba(255,138,31,.5);opacity:var(--b44,1)}
+.rk .h.on .lp{background:#ff8a1f;box-shadow:0 0 10px #ff8a1f,0 0 22px rgba(255,138,31,.5);animation:bulb 4.4s infinite}
 
 /* efecto lámpara: brillo con parpadeo suave e irregular, como las bombillas de un dial */
+@keyframes bulbO{0%,100%{opacity:1}6%{opacity:.9}8%{opacity:1}33%{opacity:.86}35%{opacity:1}62%{opacity:.96}79%{opacity:.91}81%{opacity:1}}
 @keyframes bulb{0%,100%{opacity:1}6%{opacity:.86}8%{opacity:1}31%{opacity:.95}33%{opacity:.8}34%{opacity:.98}58%{opacity:.93}76%{opacity:1}79%{opacity:.87}81%{opacity:1}}
 @keyframes bulbF{0%,100%{filter:brightness(1)}6%{filter:brightness(.9)}8%{filter:brightness(1.05)}33%{filter:brightness(.86)}35%{filter:brightness(1.02)}62%{filter:brightness(.96)}79%{filter:brightness(.91)}81%{filter:brightness(1.04)}}
-.lay{opacity:var(--b63,1)}
-.info{opacity:var(--f71,1)}
-.ts.on svg{opacity:var(--b49,1)}
+.lay{animation:bulb 6.3s infinite}
+.info{animation:bulbO 7.1s infinite}
+.ts.on svg{animation:bulb 4.9s infinite}
 .hrow{display:flex;justify-content:space-between;align-items:baseline;font-size:16px;transition:font-size .6s}
 .cp .hrow{font-size:14px}
-.dial .needle{left:4px;right:4px;background:linear-gradient(90deg,#c22a10,#ff5a2a 20%,#ff7a4a 50%,#ff5a2a 80%,#c22a10);box-shadow:0 0 4px #ff4a1a,0 0 10px #ff4a1a,0 0 22px rgba(255,74,26,.55),0 0 40px rgba(255,60,20,.25);opacity:var(--b43,1)}
-.dial .spill{position:absolute;left:-12px;right:-12px;height:76px;margin-top:-38px;pointer-events:none;background:radial-gradient(50% 50% at 50% 50%,rgba(255,80,30,.2),transparent 70%);opacity:var(--b43,1)}
+.dial .needle{left:4px;right:4px;background:linear-gradient(90deg,#c22a10,#ff5a2a 20%,#ff7a4a 50%,#ff5a2a 80%,#c22a10);box-shadow:0 0 4px #ff4a1a,0 0 10px #ff4a1a,0 0 22px rgba(255,74,26,.55),0 0 40px rgba(255,60,20,.25);animation:bulb 4.3s infinite}
+.dial .spill{position:absolute;left:-12px;right:-12px;height:76px;margin-top:-38px;pointer-events:none;background:radial-gradient(50% 50% at 50% 50%,rgba(255,80,30,.2),transparent 70%);animation:bulb 4.3s infinite}
 .dial .spill.snap{transition:top .4s cubic-bezier(.3,1.4,.5,1)}
 .dial .spine{position:absolute;left:58px;top:0;bottom:0;width:1px;background:#8a4a14}
-.dial .back{position:absolute;inset:0;pointer-events:none;background:radial-gradient(90% 55% at 40% 55%,rgba(255,140,40,.08),transparent 70%);opacity:var(--b57,1)}
-.dial .sc>div{opacity:var(--b67,1)}
-.dial .sc>.needle,.dial .sc>.spill{opacity:var(--b43,1)}
+.dial .back{position:absolute;inset:0;pointer-events:none;background:radial-gradient(90% 55% at 40% 55%,rgba(255,140,40,.08),transparent 70%);animation:bulb 5.7s infinite}
 
-canvas.leds{position:absolute;left:0;top:0;width:480px;height:264px;pointer-events:none;opacity:var(--b63,1)}
+.dial .sc>.needle,.dial .sc>.spill{animation:bulb 4.3s infinite}
+
+canvas.leds{position:absolute;left:0;top:0;width:480px;height:264px;pointer-events:none;animation:bulb 6.3s infinite}
 :host{all:initial}
 button{font-family:inherit;-webkit-tap-highlight-color:transparent;outline:none}
 
@@ -1852,16 +1853,16 @@ button{font-family:inherit;-webkit-tap-highlight-color:transparent;outline:none}
 .k1.dn .lgl .lt,.k1.lit .lgl .lt,.k1.pp:active .lgl .lt,.k1:active .lgl .lt{opacity:1;transition:opacity .18s ease-in}
 .k1 .lgb .ico{opacity:.35}
 .lgl::before{content:"";position:absolute;left:50%;top:-14px;width:112px;height:84px;margin-left:-56px;pointer-events:none;
-  background:radial-gradient(closest-side at 50% 58%,rgba(255,150,60,.17),rgba(255,120,30,.075) 52%,rgba(255,110,20,.025) 78%,transparent);opacity:var(--b57,1)}
+  background:radial-gradient(closest-side at 50% 58%,rgba(255,150,60,.17),rgba(255,120,30,.075) 52%,rgba(255,110,20,.025) 78%,transparent)}
 .k1.solo .lgl::before{top:50%;margin-top:-50px}
 /* cada luz en su propia capa: el parpadeo solo cambia la opacidad de la capa, sin volver a pintar halos ni filtros */
-.lgf,.k1 .mtx,.lgl::before,canvas.leds,.lamp::after{will-change:opacity}
+.k1 .lgl{animation:bulbO 4.7s infinite;z-index:6}.krow>*:nth-child(2n) .lgl{animation-duration:5.7s}.krow>*:nth-child(3n) .lgl{animation-duration:6.3s}
 .k1.pp .lgl::before{background:radial-gradient(closest-side at 50% 58%,rgba(255,90,50,.18),rgba(255,60,30,.08) 52%,rgba(255,50,20,.025) 78%,transparent)}
 .lgf{position:relative;filter:drop-shadow(0 -1px 0 rgba(18,5,0,.6)) drop-shadow(0 1.5px 1.5px rgba(255,170,80,.5)) drop-shadow(0 4px 7px rgba(255,125,30,.38)) drop-shadow(0 9px 16px rgba(255,110,20,.16))}
 .k1.pp .lgf{filter:drop-shadow(0 -1px 0 rgba(18,3,0,.6)) drop-shadow(0 1.5px 1.5px rgba(255,120,80,.5)) drop-shadow(0 4px 7px rgba(255,70,35,.38)) drop-shadow(0 9px 16px rgba(255,50,20,.16))}
 .k1.dn .lgf,.k1:active .lgf,.k1.lit .lgf{filter:drop-shadow(0 -1px 0 rgba(18,5,0,.5)) drop-shadow(0 1.5px 1.5px rgba(255,180,90,.62)) drop-shadow(0 4px 8px rgba(255,130,35,.5)) drop-shadow(0 10px 18px rgba(255,110,20,.24))}
 .k1 .mtx{background:radial-gradient(rgba(90,30,0,.15) .5px,transparent .8px) 0 0/2px 3px,radial-gradient(circle 60px at 50% 30%,#fff6e2 0%,#ffd896 18%,#ffa944 44%,#ec7614 70%,#a8420a 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
-  filter:drop-shadow(0 -1px 0 rgba(18,5,0,.6)) drop-shadow(0 1.5px 1.5px rgba(255,170,80,.5)) drop-shadow(0 4px 7px rgba(255,125,30,.38)) drop-shadow(0 9px 16px rgba(255,110,20,.16));opacity:var(--b47,1)}
+  filter:drop-shadow(0 -1px 0 rgba(18,5,0,.6)) drop-shadow(0 1.5px 1.5px rgba(255,170,80,.5)) drop-shadow(0 4px 7px rgba(255,125,30,.38)) drop-shadow(0 9px 16px rgba(255,110,20,.16));animation:bulb 4.7s infinite}
 </style><script type="text/x-tpl"><div style="width: 1024px; height: 600px; position: relative; overflow: hidden; background-color: #0e0f11; background-image: radial-gradient(rgba(255,255,255,.028) .8px, transparent 1.1px), linear-gradient(#131416, #0a0b0c); background-size: 3px 3px, 100% 100%; font-family: 'Barlow Condensed', sans-serif; color: #dcdad3">
 <div class="hous" style="left: 18px; right: 18px; top: 12px; height: 322px"></div>
 
@@ -2320,7 +2321,7 @@ class Component extends DCLogic {
     const exp = st.ph === 'in' || st.ph === 'scene' || (st.ph === 'out' && st.pf < 5);
     const sg = this._sg = this.stage();
     const N = exp ? 40 : 74, cur = Math.round(p * (N - 1));
-    const comet = Array.from({ length: N }, (_, k) => { const d = cur - k; let c = '#2a1607', z = 6, g = ''; if (d === 0) { c = '#ffd29a'; z = 11; g = '; box-shadow: 0 0 3px #ffb35c, 0 0 10px #ff8a1f, 0 0 22px rgba(255,138,31,.6), 0 0 40px rgba(255,120,20,.25); opacity: var(--b43,1)'; } else if (d > 0 && d < 7) { c = ['#ffb35c', '#ff9a3c', '#ff8a1f', '#e0741a', '#c05f16', '#a05012'][d - 1]; z = 8 - Math.min(2, d >> 1); } else if (d > 0) c = k % 11 === 4 ? '#4e250b' : k % 7 === 2 ? '#5e2c0d' : '#6a320e'; else if (k % 13 === 6) c = '#211205'; return 'flex: none; width: ' + z + 'px; height: ' + z + 'px; border-radius: 50%; background: ' + c + g; });
+    const comet = Array.from({ length: N }, (_, k) => { const d = cur - k; let c = '#2a1607', z = 6, g = ''; if (d === 0) { c = '#ffd29a'; z = 11; g = '; box-shadow: 0 0 3px #ffb35c, 0 0 10px #ff8a1f, 0 0 22px rgba(255,138,31,.6), 0 0 40px rgba(255,120,20,.25); animation: bulb 4.3s infinite'; } else if (d > 0 && d < 7) { c = ['#ffb35c', '#ff9a3c', '#ff8a1f', '#e0741a', '#c05f16', '#a05012'][d - 1]; z = 8 - Math.min(2, d >> 1); } else if (d > 0) c = k % 11 === 4 ? '#4e250b' : k % 7 === 2 ? '#5e2c0d' : '#6a320e'; else if (k % 13 === 6) c = '#211205'; return 'flex: none; width: ' + z + 'px; height: ' + z + 'px; border-radius: 50%; background: ' + c + g; });
     const noop = () => {};
     const testigos = [
       { lb: 'ALEAT', on: st.mode === 'shuf', d: 'M3 7h4l10 10h4M3 17h4l3-3M14 10l3-3h4M18 4l3 3-3 3M18 14l3 3-3 3' },
@@ -2684,14 +2685,8 @@ class CarUI extends Component{
   syncStation(init){const k=this.ST.findIndex(s=>s.key===P.src);if(k>=0&&(k!==this.state.stn)&&!this.state.drag){if(init)Object.assign(this.state,{stn:k,freq:this.ST[k].f});else this.setState({stn:k,freq:this.ST[k].f});}}
   cur(){const n=nowInfo(),t=n.t;return{t:n.title,a:(t&&t.a)||'',al:(t&&t.al)||'',d:Math.max(1,n.dur||1),ch:this.anim&&this.anim.on?this.anim.kind:null,id:n.id,tr:t,n};}
   songs(){return[this._cur||(this._cur=this.cur())];}
-  componentDidMount(){this.scanNext(2500);this.fv=setInterval(()=>this.tick(),170);this.flStart();}
-  /* parpadeo de bombillas: un solo reloj (~14 veces/s) mueve variables CSS compartidas en lugar de 60 animaciones sueltas */
-  flStart(){const B=[[0,1],[.06,.86],[.08,1],[.31,.95],[.33,.8],[.34,.98],[.58,.93],[.76,1],[.79,.87],[.81,1],[1,1]],F=[[0,1],[.06,.9],[.08,1],[.33,.86],[.35,1],[.62,.96],[.79,.91],[.81,1],[1,1]];
-    const cv=(K,x)=>{for(let i=1;i<K.length;i++)if(x<=K[i][0]){const a=K[i-1],b=K[i];return a[1]+(b[1]-a[1])*(x-a[0])/(b[0]-a[0]);}return 1;};
-    const G=[['b23',2.3,B],['b39',3.9,B],['b43',4.3,B],['b44',4.4,B],['b47',4.7,B],['b49',4.9,B],['b53',5.3,B],['b57',5.7,B],['b63',6.3,B],['b67',6.7,B],['f47',4.7,F],['f53',5.3,F],['f71',7.1,F]],last={},t0=performance.now();
-    clearInterval(this.flI);this.flI=setInterval(()=>{const st=this._root;if(!st||document.hidden)return;const t=(performance.now()-t0)/1000;
-      for(const [k,p,K] of G){const v=cv(K,(t/p)%1).toFixed(2);if(last[k]!==v){last[k]=v;st.style.setProperty('--'+k,v);}}},70);}
-  componentWillUnmount(){super.componentWillUnmount();clearInterval(this.flI);try{if(this.rec)this.rec.abort();}catch{}}
+  componentDidMount(){this.scanNext(2500);this.fv=setInterval(()=>this.tick(),170);}
+  componentWillUnmount(){super.componentWillUnmount();try{if(this.rec)this.rec.abort();}catch{}}
   /* ----- portada real convertida a puntos ----- */
   covLv(x,y){return this.lv?this.lv[y*44+x]:super.covLv(x,y);}
   setCov(lv){this.lv=lv;const M={1:6,2:4,3:2,4:3};this.cov=[];for(let y=0;y<44;y++)for(let x=0;x<44;x++){const l=this.covLv(x,y);if(l)this.cov.push([x,y,M[l]]);}this._sig='';this.setState({ck:(this.state.ck||0)+1});}
@@ -2725,21 +2720,30 @@ class CarUI extends Component{
       else if(ph==='scene'&&pf>=A.len){ph='out';pf=0;}
       else if(ph==='out'&&pf>=22){ph='cover';pf=0;A.next=90+Math.floor(Math.random()*330);if(Math.random()<.3)A.on=false;}}
     const o=Object.assign(up,{ph,pf,tr,lastTr,F0,sc});
-    // modo ligero: con la portada quieta, se pinta un latido sí y otro no (el reloj cambia cada segundo igual)
-    this.setState(o);}
+    /* La pantalla entera solo se vuelve a montar cuando cambia algo que se ve en ella (el segundo, la barra, un testigo, la canción…).
+       El resto de latidos solo redibujan la matriz de LEDs (personajes y centelleo), que es baratísimo. Así la tablet tiene el procesador libre para los dedos. */
+    const d=c.d,p=o.t/d,dom=[c.id,c.t,c.a,Math.round(d),Math.floor(o.t),Math.floor(Math.max(0,d-o.t)),Math.round(p*73),Math.round(p*39),ph,ph==='out'&&pf<5,o.playing,o.like,o.fund,o.mute,o.mode||st.mode,tr,new Date().getMinutes()].join('|');
+    if(dom===this._dom&&!this._q){Object.assign(this.state,o);if(n.playing||!(this.fl&1))this.light();return;}
+    this._dom=dom;this.setState(o);}
+  light(){try{this._sg=this.stage();this.afterRender();}catch(e){}}
   stage(){const k=this.anim.kind;if(k&&k!=='fito'){const keep=this.story;this.story=this.show(k);try{return super.stage();}finally{this.story=keep;}}return super.stage();}
   shadow(cells){const fl=this.fl||0,out=[];
     for(const [x,y,l] of cells)if(l>0&&x>=0&&x<80&&y>=0&&y<44){const h=((x*73856093)^(y*19349663)^0x5bd1e995)>>>0;let q=3+(h>>>7)%3;if(h%19===0)q=2;if(h%211===0)continue;
       if(h%67===0){const t=((fl>>1)+(h>>>9))%29;if(t===0)continue;if(t<4)q=1;}out.push(x,y,l*6+q);}
     return out;}
-  afterRender(){const cv=this._root.querySelector('canvas.leds'),sg=this._sg;if(!cv||!sg)return;
-    const all=[sg.base,sg.cov,sg.over];let sig=all.map(a=>a.length).join('|');for(const a of all)for(let i=0;i<a.length;i+=97)sig+=','+a[i]+a[i+2];sig+=':'+(this.fl>>1)+':'+this.state.ph+this.state.pf;
-    if(sig===this._sig)return;this._sig=sig;
-    if(!this.CQ2){const C=['','#7a300c','#ff7a1a','#ffc06a','#c4561a','#fff4e2','#6e2a0a'],F=[0,.55,.72,.86,.93,1];this.CQ2=[];C.forEach((hx,l)=>F.forEach((f,q)=>{if(!hx){this.CQ2[l*6+q]='';return;}const n=parseInt(hx.slice(1),16);this.CQ2[l*6+q]='rgb('+Math.round((n>>16)*f)+','+Math.round(((n>>8)&255)*f)+','+Math.round((n&255)*f)+')';}));}
-    const sc=cv.width/480,x=cv.getContext('2d');x.setTransform(sc,0,0,sc,0,0);x.clearRect(0,0,480,264);
-    const by=new Map();for(const a of all)for(let i=0;i<a.length;i+=3){const k=a[i+2];let L=by.get(k);if(!L)by.set(k,L=[]);L.push(a[i],a[i+1]);}
-    for(const [k,L] of by){x.fillStyle=this.CQ2[k];x.globalAlpha=.16;x.beginPath();for(let i=0;i<L.length;i+=2){const px=L[i]*6+3,py=L[i+1]*6+3;x.moveTo(px+4.6,py);x.arc(px,py,4.6,0,6.3);}x.fill();
-      x.globalAlpha=1;x.beginPath();for(let i=0;i<L.length;i+=2){const px=L[i]*6+3,py=L[i+1]*6+3;x.moveTo(px+2.25,py);x.arc(px,py,2.25,0,6.3);}x.fill();}}
+  /* Matriz de LEDs: cada celda es un sello ya dibujado (punto + resplandor) y solo se repintan las celdas que cambian de un latido a otro.
+     Con un personaje moviéndose son unos cientos de sellos; con la portada quieta, un puñado. Antes eran 7.000 círculos por latido. */
+  afterRender(){const cv=this._cv&&this._cv.isConnected?this._cv:(this._cv=this._root.querySelector('canvas.leds')),sg=this._sg;if(!cv||!sg)return;
+    const W=80,H=44,sc=cv.width/480;
+    if(!this.gN){this.gN=new Uint8Array(W*H);this.gO=new Uint8Array(W*H);}
+    if(this._cvEl!==cv||this._cvW!==cv.width){this._cvEl=cv;this._cvW=cv.width;this.gO.fill(255);this.SP=null;this._cx=cv.getContext('2d');}
+    if(!this.SP){const C=['','#7a300c','#ff7a1a','#ffc06a','#c4561a','#fff4e2','#6e2a0a'],F=[0,.55,.72,.86,.93,1],z=Math.round(6*sc);this.SP=[];
+      C.forEach((hx,l)=>F.forEach((f,q)=>{if(!hx)return;const n=parseInt(hx.slice(1),16),col='rgb('+Math.round((n>>16)*f)+','+Math.round(((n>>8)&255)*f)+','+Math.round((n&255)*f)+')';
+        const s=document.createElement('canvas');s.width=s.height=z;const g=s.getContext('2d');g.scale(z/6,z/6);g.fillStyle=col;g.globalAlpha=.16;g.fillRect(0,0,6,6);g.globalAlpha=1;g.beginPath();g.arc(3,3,2.25,0,6.3);g.fill();this.SP[l*6+q]=s;}));}
+    const g=this.gN,o=this.gO,x=this._cx;g.fill(0);
+    for(const a of [sg.base,sg.cov,sg.over])for(let i=0;i<a.length;i+=3){const cx=a[i],cy=a[i+1];if(cx>=0&&cx<W&&cy>=0&&cy<H)g[cy*W+cx]=a[i+2];}
+    x.setTransform(sc,0,0,sc,0,0);
+    for(let k=0,n=W*H;k<n;k++){const v=g[k];if(v===o[k])continue;o[k]=v;const px=(k%W)*6,py=((k/W)|0)*6;x.clearRect(px,py,6,6);const sp=v&&this.SP[v];if(sp)x.drawImage(sp,px,py,6,6);}}
   /* ----- mandos ----- */
   go(d){if(d>0)P.next();else if(P.qi>0)P.load(P.qi-1);else P.seek(0);}
   remote(dir){clearTimeout(this.rmT);this.setState({press:dir});this.rmT=setTimeout(()=>this.setState({press:0}),220);
