@@ -648,7 +648,7 @@ const BL={mem:new Map(),inflight:new Map(),
     this.inflight.set(t.id,p);p.finally(()=>this.inflight.delete(t.id)).catch(()=>{});return p;},
   prefetch(n){if(!AUTH.ok()||!navigator.onLine)return;const ids=[];for(let i=1;i<=n;i++){const id=P.q[P.qi+i];if(id)ids.push(id);}
     (async()=>{for(const id of ids){const t=getTrack(id);if(!t||t.test||S.dl.has(id)||this.mem.has(id))continue;try{await this.get(t,false);}catch{break;}}})();}};
-async function srcFor(t){if(t.test)return t.url;
+async function srcFor(t){if(t.test||t.demo)return t.url;
   if(S.dl.has(t.id)){try{const rec=await IDB.get('audio',t.id);if(rec&&rec.b)return URL.createObjectURL(rec.b);}catch{}}
   if(!navigator.onLine&&!BL.mem.has(t.id))throw Object.assign(new Error('offline'),{code:'offline'});
   S.loading=t.id;renderPlayer();
@@ -679,10 +679,11 @@ const P={q:[],orig:null,qi:-1,shuffle:false,repeat:'off',src:'',
     try{await AE.el.play();}catch(e){if(e&&e.name==='NotAllowedError')toast('Toca ▶ para empezar');else if(e&&e.name!=='AbortError'){console.warn(e);}}},
   pause(){if(S.ctrl)return remoteCmd({op:'pause'});P.selfPause=performance.now();AE.decks.forEach(d=>d.pause());},
   async toggle(){if(S.ctrl)return remoteCmd({op:'toggle'});
+    if(!this.current&&document.body.classList.contains('carmode')){let c=null;try{c=CAR;}catch{}if(c&&c.tuneCurrent&&c.tuneCurrent())return;}
     if(!this.current){const ids=S.allIds.length?S.allIds:collIds('test');if(!ids.length){await makeTests();return this.play(collIds('test'),0,'test');}return this.play(ids,-1,'all',{shuffle:true});}
     if(AE.el.paused)await this.resume();else this.pause();},
   async next(auto=false){if(S.ctrl&&!auto)return remoteCmd({op:'next'});const i=this.nextIdx(auto);
-    if(i==null){if(prefs.radio&&this.radioSeed){const more=similarTo(this.radioSeed,25,new Set(this.q.slice(-150)));if(more.length){this.q.push(...more);return this.load(this.qi+1);}}
+    if(i==null){if(prefs.radio&&this.radioSeed){const recent=new Set(this.q.slice(-Math.min(150,Math.max(8,Math.floor(S.tracks.size/3)))));let more=similarTo(this.radioSeed,25,recent,this.radioHint);if(!more.length)more=similarTo(this.radioSeed,25,new Set([this.current&&this.current.id]),this.radioHint);if(more.length){this.q.push(...more);return this.load(this.qi+1);}}
       else if(document.body.classList.contains('carmode')&&/^(rad:|likes|all)/.test(this.src||'')){const cur=this.current,ids=shuffleArr(collIds(this.src).filter(id=>!cur||id!==cur.id));if(ids.length){this.q.push(...ids);return this.load(this.qi+1);}}
       else if(auto&&prefs.radio){const more=similarTo(this.current,25,new Set(this.q));if(more.length){this.q.push(...more);if(this.orig)this.orig.push(...more);return this.load(this.qi+1);}}
       this.pause();try{AE.el.currentTime=0;}catch{}endListen();renderPlayer();return;}
@@ -705,13 +706,13 @@ const P={q:[],orig:null,qi:-1,shuffle:false,repeat:'off',src:'',
 
 function vibeOf(t){const a=norm(t.a||''),g=norm(t.g||''),v=new Set();
   try{for(const k of ['fito','hit','regg','trap'])if(radioKind(t,k))v.add(k);}catch{}
-  if(v.has('fito')||KIND_RE.rock.test(a)||/rock|metal|punk|grunge/.test(g))v.add('rock');if(KIND_RE.diva.test(a))v.add('hit');return v;}
-function similarTo(t,n,ex){if(!t||t.test||!S.tracks.size)return[];const dec=t.y?Math.floor(parseInt(t.y,10)/10):null,tv=vibeOf(t),tg=t.g?norm(t.g):'';
+  if(v.has('fito')||KIND_RE.rock.test(a)||/rock|metal|punk|grunge/.test(g))v.add('rock');return v;}
+function similarTo(t,n,ex,hint){if(!t||t.test||!S.tracks.size)return[];const mates=new Set();try{for(const pl of Object.values(S.playlists||{})){const ids=(pl&&pl.ids)||[];if(ids.includes(t.id))ids.forEach(i=>mates.add(i));}}catch{}const dec=t.y?Math.floor(parseInt(t.y,10)/10):null,tv=vibeOf(t),tg=t.g?norm(t.g):'';if(!tv.size&&hint)tv.add(hint);
   const score=x=>{const xv=vibeOf(x);let sh=0;for(const k of tv)if(xv.has(k))sh++;
-    return (x.arId===t.arId?3:0)+sh*3.2+(tv.size&&xv.size&&!sh?-4:0)+(tg&&x.g&&norm(x.g)===tg?2:0)+(dec!=null&&x.y&&Math.floor(parseInt(x.y,10)/10)===dec?1:0)+(S.likes[x.id]?.8:0)+Math.random()*1.6;};
+    return (x.arId===t.arId?3:0)+(mates.has(x.id)?2.5:0)+sh*3.2+(tv.size&&xv.size&&!sh?-4:0)+(tg&&x.g&&norm(x.g)===tg?2:0)+(dec!=null&&x.y&&Math.floor(parseInt(x.y,10)/10)===dec?1:0)+(S.likes[x.id]?.8:0)+Math.random()*1.6;};
   // solo lo que de verdad se parece (mismo rollo, artista o género); lo demás únicamente si no hay casi nada
-  const rel=x=>{if(x.arId===t.arId)return true;if(tg&&x.g&&norm(x.g)===tg)return true;const xv=vibeOf(x);for(const k of tv)if(xv.has(k))return true;return!tv.size&&!tg;};
-  const all=[...S.tracks.values()].filter(x=>!ex.has(x.id)&&!x.test),good=all.filter(rel),pool=good.length>=8?good:all;
+  const rel=x=>{if(x.arId===t.arId||mates.has(x.id))return true;if(tg&&x.g&&norm(x.g)===tg)return true;const xv=vibeOf(x);for(const k of tv)if(xv.has(k))return true;return!tv.size&&!tg;};
+  const every=[...S.tracks.values()].filter(x=>!x.test&&x.id!==t.id),goodAll=every.filter(rel),pool=(goodAll.length>=8?goodAll:every).filter(x=>!ex.has(x.id));
   const out=[],per={};for(const [,x] of pool.map(x=>[score(x),x]).sort((a,b)=>b[0]-a[0])){
     if((per[x.arId]=(per[x.arId]||0)+1)>4&&pool.length>n)continue;out.push(x.id);if(out.length>=n)break;}
   return shuffleArr(out.slice(0,Math.max(6,Math.round(n*.6)))).concat(out.slice(Math.max(6,Math.round(n*.6))));}
@@ -1596,7 +1597,7 @@ async function boot(){try{document.documentElement.style.setProperty('--wood-img
   await Promise.all([SY.loadLocal(),LIB.loadLocal()]);
   try{const st=await IDB.get('kv','stats');if(st&&st.ym===ym()&&st.dev===device.id){S.stats=st;S.statsId=statsName();}}catch{}
   DL.init();renderAll();if(AUTH.ok())onAuth();
-  if(S.firstRun&&!SIM)setTimeout(firstRunSheet,700);if(SIM)simInit();
+  if(S.firstRun&&!SIM&&!DEMO)setTimeout(firstRunSheet,700);if(SIM)simInit();if(DEMO)demoLib();if(new URLSearchParams(location.search).has('medir'))medir();
   if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});}
 </script>
 <!--CAR2--><template id="carTpl"><style>
@@ -2388,7 +2389,7 @@ class Component extends DCLogic {
       infoTap: () => this.dblTap(),
       swCancel: () => { this.sw = null; },
       needleY: yOf(st.freq).toFixed(1), needleCls: 'needle' + (st.drag ? '' : ' snap'), spillCls: 'spill' + (st.drag ? '' : ' snap'), freqR: Math.round(st.freq),
-      stationLb: st.mode === 'radio' && this.radioLb ? 'RADIO · ' + String(this.radioLb).toUpperCase().slice(0, 26) : S[st.stn].f + ' Hz · ' + S[st.stn].n, temp: this.dayStr(), clock: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'),
+      stationLb: st.mode === 'radio' && this.radioLb ? 'RADIO · ' + String(this.radioLb).toUpperCase().slice(0, 26) : (this.srcLabel && this.srcLabel()) ? String(this.srcLabel()).toUpperCase().slice(0, 30) : S[st.stn].f + ' Hz · ' + S[st.stn].n, temp: this.dayStr(), clock: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'),
       dialFoot: tuned ? S[st.drag ? nr.k : st.stn].f + ' Hz · ' + S[st.drag ? nr.k : st.stn].n : st.freq.toFixed(1) + ' Hz · · ·',
       noiseOp: st.drag ? (nr.noise * .55).toFixed(2) : '0', cvW: CVW, cvH: CVW * .55, snowD: st.drag ? 'block' : 'none',
       title: st.drag && nr.noise > 0 ? 'Sintonizando' : s.t, sub, subTail: subMove ? '  ·  ' + sub + '  ·  ' : '', subCls: 'mq sub' + (subMove ? ' mv' : ''),
@@ -2675,14 +2676,14 @@ class CarUI extends Component{
     this.shows={fito:this.story};this.lv=null;this.covId=null;
     let m=LS.get('carMode','shuf');if(m!=='radio')m='shuf';
     Object.assign(this.state,{stn:0,freq:24,i:0,t:0,playing:false,ph:'cover',pf:0,mode:m,like:false,fund:prefs.fx&&prefs.xf>0,mute:false});
-    this.buildStations();this.syncStation(true);this.anim={id:null,on:false,next:1e9,len:170,p:.5,left:0};
+    this.buildStations();{const k=this.ST.findIndex(x=>x.key===LS.get('carStn',''));if(k>=0)Object.assign(this.state,{stn:k,freq:this.ST[k].f});}this.syncStation(true);this.anim={id:null,on:false,next:1e9,len:170,p:.5,left:0};
     this.applied=null;this.prevMode=m;this.applyMode(m==='radio'?'shuf':m,true);if(m==='radio')this.state.mode='shuf';}
   show(k){if(!this.shows[k])this.shows[k]=new Show(k,(hashStr(k)%9000)+77);return this.shows[k];}
   buildStations(){
     this.ST=[{f:24,n:'FITO',key:'rad:fito'},{f:31,n:'HIT FM',key:'rad:hit'},{f:38,n:'REGGAETÓN',key:'rad:regg'},{f:45,n:'AMER. TRAP',full:'AMERICAN TRAP',key:'rad:trap'},{f:55,n:'FAVORITOS',key:'likes'}];
     this.stSig=S.tracks.size+':'+S.artists.length+':'+(likedIds().length?1:0);}
   stations(){return this.ST;}
-  syncStation(init){const k=this.ST.findIndex(s=>s.key===P.src);if(k>=0&&(k!==this.state.stn)&&!this.state.drag){if(init)Object.assign(this.state,{stn:k,freq:this.ST[k].f});else this.setState({stn:k,freq:this.ST[k].f});}}
+  syncStation(init){const k=this.ST.findIndex(s=>s.key===P.src);if(k>=0&&(k!==this.state.stn)&&!this.state.drag){LS.set('carStn',this.ST[k].key);if(init)Object.assign(this.state,{stn:k,freq:this.ST[k].f});else this.setState({stn:k,freq:this.ST[k].f});}}
   cur(){const n=nowInfo(),t=n.t;return{t:n.title,a:(t&&t.a)||'',al:(t&&t.al)||'',d:Math.max(1,n.dur||1),ch:this.anim&&this.anim.on?this.anim.kind:null,id:n.id,tr:t,n};}
   songs(){return[this._cur||(this._cur=this.cur())];}
   componentDidMount(){this.scanNext(2500);this.fv=setInterval(()=>this.tick(),170);}
@@ -2704,6 +2705,8 @@ class CarUI extends Component{
   tick(){this.fl=(this.fl||0)+1;const c=this._cur=this.cur(),st=this.state,n=c.n,A=this.anim;
     if(this.stSig!==S.tracks.size+':'+S.artists.length+':'+(likedIds().length?1:0))this.buildStations();
     this.syncStation();
+    if(this.applied==='radio'&&P.current&&P.src!=='radio'){prefs.radio=false;P.radioSeed=null;this.radioLb='';this.applied='shuf';this.prevMode='shuf';LS.set('carMode','shuf');if(st.mode==='radio')this.setState({mode:'shuf'});} // han puesto otra cosa (álbum, DJ…): la radio se apaga
+    if(this.wantPlay&&!P.current){if(Date.now()-this.wantPlay>25000)this.wantPlay=0;else if(S.tracks.size){this.wantPlay=0;if(!this.tuneCurrent())P.toggle();}}
     const up={t:n.pos||0,playing:!!n.playing,like:!!(c.id&&S.likes[c.id]>0),fund:!!(prefs.fx&&prefs.xf>0),mute:!!AE.el.muted};
     if(c.id!==A.id){ // canción nueva: ¿sale el personaje? Unas rachas mucho, otras poco
       A.id=c.id;this.loadCov(c.tr);const kind=carKind(c.tr);
@@ -2722,7 +2725,7 @@ class CarUI extends Component{
     const o=Object.assign(up,{ph,pf,tr,lastTr,F0,sc});
     /* La pantalla entera solo se vuelve a montar cuando cambia algo que se ve en ella (el segundo, la barra, un testigo, la canción…).
        El resto de latidos solo redibujan la matriz de LEDs (personajes y centelleo), que es baratísimo. Así la tablet tiene el procesador libre para los dedos. */
-    const d=c.d,p=o.t/d,dom=[c.id,c.t,c.a,Math.round(d),Math.floor(o.t),Math.floor(Math.max(0,d-o.t)),Math.round(p*73),Math.round(p*39),ph,ph==='out'&&pf<5,o.playing,o.like,o.fund,o.mute,o.mode||st.mode,tr,new Date().getMinutes()].join('|');
+    const d=c.d,p=o.t/d,dom=[c.id,c.t,c.a,Math.round(d),Math.floor(o.t),Math.floor(Math.max(0,d-o.t)),Math.round(p*73),Math.round(p*39),ph,ph==='out'&&pf<5,o.playing,o.like,o.fund,o.mute,o.mode||st.mode,tr,new Date().getMinutes(),P.src,this.radioLb||''].join('|');
     if(dom===this._dom&&!this._q){Object.assign(this.state,o);if(n.playing||!(this.fl&1))this.light();return;}
     this._dom=dom;this.setState(o);}
   light(){try{this._sg=this.stage();this.afterRender();}catch(e){}}
@@ -2756,17 +2759,34 @@ class CarUI extends Component{
     if(this.lrHeld){this.lrHeld=false;setTimeout(()=>{this.lrHeldNow=false;},600);return;}
     if(dir<0){if(nowInfo().pos>3){P.seek(0);this.say('DESDE EL PRINCIPIO');}else this.go(-1);}else this.go(1);}
   toggle(){const was=nowInfo().playing;P.toggle();if(was)this.say('EN PAUSA');}
+  /* al encender: suena la emisora que marca el dial */
+  tuneCurrent(){const k=this.state.stn,s=this.ST[k];if(s&&collIds(s.key).length){this.wantPlay=0;this.tune(k);return true;}
+    if(!S.tracks.size&&(AUTH.ok()||(typeof DEMO!=='undefined'&&DEMO))){this.wantPlay=Date.now();this.say('CARGANDO TU MÚSICA…');return true;}return false;}
+  /* qué está sonando si no es una emisora (un álbum elegido en el menú, la sesión del DJ…) */
+  srcLabel(){const src=P.src||'';if(!P.current||!src||src==='radio'||this.ST.some(x=>x.key===src))return'';
+    if(src==='test')return'PRUEBA DE SONIDO';if(src==='all')return'TODA TU MÚSICA';const k=src.split(':')[0];
+    try{return({dj:'DJ',al:'ÁLBUM',ar:'ARTISTA',pl:'LISTA'}[k]||'TU MÚSICA')+' · '+collName(src);}catch{return'TU MÚSICA';}}
   /* modos de la tecla: ALEATORIO (dentro de la emisora) · RADIO (canciones parecidas a la que suena, hasta quitarlo) · +1 (repite esta una vez y vuelve al modo de antes) */
   applyMode(m,quiet){const cur=P.current,was=this.applied;
     if(m==='once'){if(!cur){this.say('NO HAY NADA SONANDO');return false;}P.repeat='one';this.onceId=cur.id;this.applied='once';return true;}
     P.repeat='off';this.onceId=null;
     if(was==='once'&&m===this.prevMode){this.applied=m;return true;} // vuelve de +1: sigue como estaba, sin rehacer la cola
     if(m==='radio'){if(!cur||cur.test){if(!quiet)this.say('PON UNA CANCIÓN DE TU MÚSICA PRIMERO');return false;}
-      prefs.radio=true;P.radioSeed=cur;this.radioLb=cur.t||'';const more=similarTo(cur,40,new Set([cur.id]));
-      P.q=P.q.slice(0,P.qi+1).concat(more);P.orig=null;P.shuffle=false;P.src='radio';}
+      prefs.radio=true;P.radioSeed=cur;P.radioHint=/^rad:/.test(P.src||'')?P.src.slice(4):(P.src==='radio'?P.radioHint:null);this.radioLb=cur.t||'';const more=similarTo(cur,40,new Set([cur.id]),P.radioHint);
+      P.q=P.q.slice(0,P.qi+1).concat(more);P.orig=null;P.shuffle=false;P.src='radio';this.radioAsk(cur);}
     else{prefs.radio=false;P.radioSeed=null;this.radioLb='';
       if(was==='radio'||(was==='once'&&this.prevMode==='radio'))this.shufStation();else if(cur){if(!P.shuffle)P.toggleShuffle();}else P.shuffle=true;}
     this.applied=m;this.prevMode=m;LS.set('carMode',m);savePrefs();renderQueueIfOpen();return true;}
+  /* con clave de Claude y cobertura, la radio la afina él: conoce a los artistas y elige de tu biblioteca lo que de verdad pega con la canción */
+  async radioAsk(seed){if(!(S.cfg.apiKey||'').trim()||!navigator.onLine||S.tracks.size<12)return;const tok=this.raTok=(this.raTok||0)+1;
+    try{const {text,idx}=libListing(90000);
+      const out=await claudeAsk('Programas la «radio de una canción» en el reproductor personal de quien te escribe, como la de Spotify.\nCanción semilla: «'+(seed.t||'')+'» de '+(seed.a||'')+(seed.al?' (álbum '+seed.al+')':'')+(seed.g?' ['+seed.g+']':'')+'.\n'+
+        'De SU biblioteca (va al final; cada canción lleva delante un número) elige unas 35 que peguen de verdad con la semilla: mismo estilo y escena, energía, época e idioma parecidos. Usa lo que sabes de cada artista. Mezcla artistas (máximo 4 canciones del mismo, y que no vayan seguidas), no repitas la semilla y, si no hay 35 que encajen, pon menos antes que meter algo que desentone. Ordénalas para que fluyan.\n'+
+        'Responde SOLO con líneas JSON, una por canción y nada más: {"n":número}\n\nBIBLIOTECA\n'+text,900);
+      const ids=[];for(const raw of out.split('\n')){const line=raw.trim().replace(/^```(json)?/,'').replace(/```$/,'').replace(/,$/,'').trim();if(!line)continue;let o;try{o=JSON.parse(line);}catch{continue;}const id=o&&o.n!=null?idx[+o.n]:null;if(id&&id!==seed.id&&!ids.includes(id))ids.push(id);}
+      if(tok!==this.raTok||P.radioSeed!==seed||!prefs.radio||ids.length<5)return;
+      const played=new Set(P.q.slice(0,P.qi+1));P.q=P.q.slice(0,P.qi+1).concat(ids.filter(id=>!played.has(id)));P.radioPool=ids;renderQueueIfOpen();this.say('RADIO AFINADA · '+ids.length+' CANCIONES');
+    }catch(e){console.warn('radio',e);}}
   shufStation(){const s=this.ST[this.state.stn]||this.ST[0],cur=P.current,ids=collIds(s.key).filter(id=>!cur||id!==cur.id);
     P.q=(cur?[cur.id]:[]).concat(shuffleArr(ids));P.qi=0;P.orig=null;P.shuffle=true;P.src=s.key;}
   // la tecla se puede pulsar varias veces seguidas: el modo se aplica cuando dejas de pulsar (así pasar por RADIO para llegar a +1 no cambia la cola)
@@ -2781,7 +2801,7 @@ class CarUI extends Component{
   tune(k){const s=this.ST[k];if(s.key==='dj'){const ids=(LS.get('carDjIds',[])||[]).filter(id=>S.tracks.has(id));if(ids.length){P.play(ids,0,'dj',{shuffle:false});this.say('EMISORA 45 Hz · CLAUDE DJ');}else{this.say('PULSA DJ Y PIDE MÚSICA');}return;}
     const ids=collIds(s.key);if(!ids.length){this.say(!S.tracks.size?'SIN MÚSICA TODAVÍA':s.key==='likes'?'SIN FAVORITOS · DOS TOQUES EN LA PORTADA':(s.full||s.n)+' · SIN CANCIONES AÚN');return;}
     clearTimeout(this.cyT);prefs.radio=false;P.radioSeed=null;this.radioLb='';P.repeat='off';this.applied='shuf';this.prevMode='shuf';LS.set('carMode','shuf');this.setState({mode:'shuf'});
-    P.play(ids,-1,s.key,{shuffle:true});this.say('EMISORA '+s.f+' Hz · '+(s.full||s.n));}
+    LS.set('carStn',s.key);P.play(ids,-1,s.key,{shuffle:true});this.say('EMISORA '+s.f+' Hz · '+(s.full||s.n));}
   menuDo(k){const acts=[()=>{carOff();go('buscar');},()=>carLib('pl'),()=>carLib('ar'),()=>carLib('al'),()=>this.djStart(),()=>openEq(),()=>carOff()];
     if(k===7){this.closeScr('');return;}this.closeScr('');setTimeout(()=>{try{acts[k]();}catch(e){console.warn(e);}},FL.total+80);}
   /* ----- Claude DJ por voz ----- */
@@ -2865,7 +2885,24 @@ html.sim .car{right:auto!important;bottom:auto!important;padding:0!important;bor
     ...[['MediaTrackPrevious','⏮ Anterior'],['MediaPlayPause','⏯ Play/Pausa'],['MediaTrackNext','⏭ Siguiente'],['AudioVolumeMute','🔇 Mute']].map(([k,l])=>h('button',{onclick:()=>dispatchEvent(new KeyboardEvent('keydown',{key:k,code:k,bubbles:true,cancelable:true}))},l)));
   const ch=h('div',{id:'simChrome'},h('div',{class:'sy'},'◁','⌂','▢',h('span',{style:'margin-left:auto'},'17:51')),h('div',{class:'tb'},'● La Guantera'),h('div',{class:'ur'},h('span',null,'jaimebeltran-at.github.io/la-guantera/#coche')));
   document.body.append(bar,keys,ch);addEventListener('resize',simFit);if(!document.body.classList.contains('carmode'))carOn();simFit();}
+/* medidor de fluidez (abre con ?medir): imágenes por segundo, peor parón y tiempo bloqueado, para probar en la tablet de verdad */
+function medir(){const el=h('div',{style:'position:fixed;left:6px;top:6px;z-index:99;background:rgba(0,0,0,.78);color:#7CFC9A;font:600 15px/1.25 monospace;padding:6px 9px;border-radius:6px;pointer-events:none;white-space:pre'},'midiendo…');document.body.append(el);
+  let n=0,worst=0,last=performance.now(),t0=last,lt=0,hist=[];try{new PerformanceObserver(li=>li.getEntries().forEach(e=>lt+=e.duration)).observe({type:'longtask'});}catch{}
+  const f=t=>{const d=t-last;last=t;n++;if(d>worst)worst=d;if(t-t0>=2000){const fps=Math.round(n*1000/(t-t0));hist.push(fps);if(hist.length>30)hist.shift();
+      el.textContent=fps+' img/s   peor parón '+Math.round(worst)+' ms\nbloqueado '+Math.round(lt/(t-t0)*100)+'%   media '+Math.round(hist.reduce((a,b)=>a+b,0)/hist.length)+' img/s';el.style.color=fps>=45?'#7CFC9A':fps>=28?'#ffd166':'#ff6b6b';n=0;worst=0;lt=0;t0=t;}
+    requestAnimationFrame(f);};requestAnimationFrame(f);}
 const SIMV={chrome:false};
+/* biblioteca de mentira (abre con ?demo): artistas de verdad con pitidos de prueba, para ensayar emisoras, radio y modos sin Drive */
+const DEMO=new URLSearchParams(location.search).has('demo');
+async function demoLib(){await makeTests();const urls=[...TEST.values()];if(!urls.length)return;
+  const A=[['Fito y Fitipaldis','Rock',['Soldadito marinero','Por la boca vive el pez','Antes de que cuente diez','La casa por el tejado','Me equivocaría otra vez','Entre la espada y la pared']],['Platero y Tú','Rock',['Hay poco rock & roll','Alucinante','El roce de tu cuerpo','Juliette']],
+    ['Marea','Rock',['La luna me sabe a poco','Corazón de mimbre','Romance de José Etxailarena','El perro verde']],['Extremoduro','Rock',['So payaso','Standby','La vereda de la puerta de atrás']],
+    ['Bad Bunny','',['Tití me preguntó','Dakiti','Callaíta','Me porto bonito','Monaco']],['Karol G','',['Provenza','Bichota','TQG']],['Feid','',['Normal','Classy 101','Luna']],['Emilia','',['La original','No se ve','GTA']],
+    ['Travis Scott','',['Sicko mode','Goosebumps','Fein','Highest in the room']],['Future','',['Mask off','Life is good','Low life']],['Drake','',['God\'s plan','One dance','Hotline bling']],
+    ['Dua Lipa','Pop',['Levitating','Houdini','Don\'t start now','New rules']],['Taylor Swift','Pop',['Anti-hero','Shake it off','Cruel summer']],['Aitana','Pop',['Las babys','Formentera','Mon amour']],['The Weeknd','',['Blinding lights','Starboy','Save your tears']],
+    ['Los del Garaje','',['Maqueta uno','Maqueta dos','Maqueta tres']]];
+  const tracks={};let n=0;for(const [a,g,ts] of A)for(const t of ts){const u=urls[n%urls.length];tracks['demo'+n]={t,a,al:a+' · Grandes éxitos',g,y:String(1995+(n*7)%30),du:u.du,ad:Date.now()-n*864e5,m:'1',demo:true,url:u.url};n++;}
+  LIB.idx={folder:'demo',tracks};rebuildIndex();try{renderSoon();}catch{}toast('Biblioteca de demostración: '+n+' canciones');}
 function simFit(){if(!SIM)return;const k=Math.min(1,(innerWidth-80)/1024,(innerHeight-150)/600),W=1024*k,H=600*k,x=(innerWidth-W)/2,y=Math.max(64,(innerHeight-H)/2),c=$('#car'),cb=$('#simChrome'),top=SIMV.chrome?128*k:0;
   [['left',x],['top',y+top],['width',W],['height',H-top]].forEach(([p,v])=>c.style.setProperty(p,v+'px','important'));
   Object.assign(cb.style,{display:SIMV.chrome?'flex':'none',left:x+'px',top:y+'px',width:'1024px',height:'128px',transform:'scale('+k+')'});
