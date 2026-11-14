@@ -1184,7 +1184,7 @@ function openEq(){const g=AE.gains();
 
 /* modo coche */
 const carBtn=(act,icon,label)=>h('button',{class:'pbtn','data-act':act,'aria-label':label},ic(icon));
-function goFull(){try{const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen({navigationUI:'hide'}).catch(()=>{});}catch{}}
+function goFull(){if(typeof SIM!=='undefined'&&SIM)return;try{const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen({navigationUI:'hide'}).catch(()=>{});}catch{}}
 function carOn(){document.body.classList.add('carmode');goFull();document.addEventListener('pointerdown',goFull,{once:true,capture:true});closeNp();closeLayer();$('#car').hidden=false;$('#app').setAttribute('aria-hidden','true');renderCar();wake();
   try{history.replaceState(null,'','#coche');}catch{}}
 function carOff(){document.body.classList.remove('carmode');if(typeof CAR!=='undefined'&&CAR){try{CAR.unmount();}catch(e){}CAR=null;}$('#car').hidden=true;$('#car').textContent='';$('#app').removeAttribute('aria-hidden');
@@ -1587,7 +1587,7 @@ async function boot(){try{document.documentElement.style.setProperty('--wood-img
   await Promise.all([SY.loadLocal(),LIB.loadLocal()]);
   try{const st=await IDB.get('kv','stats');if(st&&st.ym===ym()&&st.dev===device.id){S.stats=st;S.statsId=statsName();}}catch{}
   DL.init();renderAll();if(AUTH.ok())onAuth();
-  if(S.firstRun)setTimeout(firstRunSheet,700);
+  if(S.firstRun&&!SIM)setTimeout(firstRunSheet,700);if(SIM)simInit();
   if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});}
 </script>
 <!--CAR2--><template id="carTpl"><style>
@@ -1944,7 +1944,7 @@ const CARRT=(()=>{
       const out=[],H=[];run(this._tpl,v,out,H);const html=out.join('');this._H=H;if(html===this._html){if(this.afterRender)try{this.afterRender();}catch(e){}return;}this._html=html;const t=document.createElement('template');t.innerHTML=html;
       morph(this._root,t.content);
       for(const el of this._root.querySelectorAll(SEL)){if(el._b)continue;el._b=true;
-        for(const e of EV)if(el.hasAttribute('data-on-'+e)){const run=ev=>{const f=this._H&&this._H[el.getAttribute('data-on-'+e)];if(f)try{f(ev);}catch(x){console.warn('coche',x);}};if(e==='click'){/* responde al apoyar el dedo, no al soltarlo: en la tablet lenta se nota */el.addEventListener('pointerdown',ev=>{if(ev.button>0||!ev.isPrimary)return;CARRT.pd=performance.now();run(ev);});el.addEventListener('click',ev=>{if(performance.now()-(CARRT.pd||-1e9)<700)return;run(ev);});}else el.addEventListener(e,run);}}
+        for(const e of EV)if(el.hasAttribute('data-on-'+e)){const run=ev=>{const f=this._H&&this._H[el.getAttribute('data-on-'+e)];if(f)try{f(ev);}catch(x){console.warn('coche',x);}};if(e==='click'){/* responde al apoyar el dedo, no al soltarlo: en la tablet lenta se nota */el.addEventListener('pointerdown',ev=>{if(ev.button>0||!ev.isPrimary)return;/* el primer toque con el dedo aún no «desbloquea» el sonido: ese lo deja para el click */if(ev.pointerType!=='mouse'&&navigator.userActivation&&!navigator.userActivation.hasBeenActive)return;CARRT.pd=performance.now();run(ev);});el.addEventListener('click',ev=>{if(performance.now()-(CARRT.pd||-1e9)<700)return;run(ev);});}else el.addEventListener(e,run);}}
       if(this.afterRender)try{this.afterRender();}catch(e){console.warn('coche',e);}}
     mount(root,tpl){this._root=root;this._tpl=tpl;this._render();if(this.componentDidMount)this.componentDidMount();}
     unmount(){if(this.componentWillUnmount)try{this.componentWillUnmount();}catch(e){}this._root=null;}}
@@ -2821,6 +2821,34 @@ function carFitEl(){return window.$car2stage;}
 
 </script>
 <!--/CAR2-->
+<script>
+/* ===== simulador de la tablet del coche (abre con ?sim): la misma app, encajada en una pantalla 1024×600 ===== */
+const SIM=new URLSearchParams(location.search).has('sim');
+function simInit(){document.documentElement.classList.add('sim');const st=document.createElement('style');st.textContent=`
+html.sim body{background:#141210}
+html.sim .car{right:auto!important;bottom:auto!important;padding:0!important;border-radius:4px;box-shadow:0 0 0 2px #000,0 0 0 26px #221e1a,0 0 0 28px #0c0b0a,0 24px 70px 30px rgba(0,0,0,.7)}
+#simBar,#simKeys{position:fixed;left:0;right:0;z-index:40;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;font:14px system-ui,sans-serif;color:#e9e2d6;padding:0 12px}
+#simBar{top:14px}#simKeys{bottom:14px}
+#simBar b{letter-spacing:.06em;font-weight:600;margin-right:6px}
+#simBar button,#simKeys button,#simBar select{background:#1e1b18;color:#e9e2d6;border:1px solid #3a342d;border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer}
+#simBar button:hover,#simKeys button:hover{border-color:#ff8a1f}
+#simChrome{position:fixed;z-index:21;background:linear-gradient(#e9e9ee,#f4f1ee);color:#333;font:13px system-ui;display:none;flex-direction:column;overflow:hidden;transform-origin:0 0}
+#simChrome div{display:flex;align-items:center;padding:0 16px}#simChrome .sy{height:46px;background:#dfe0e8;gap:22px}#simChrome .tb{height:36px}#simChrome .ur{height:46px}
+#simChrome .ur span{background:#e6e3ee;border-radius:20px;padding:7px 16px;flex:1}`;document.head.append(st);
+  const bar=h('div',{id:'simBar'},h('b',null,'SIMULADOR · TABLET DEL COCHE'),
+    (()=>{const se=h('select',{'aria-label':'Vista'},h('option',{value:'full'},'Pantalla completa / icono'),h('option',{value:'chrome'},'Dentro de Chrome (con barras)'));se.onchange=()=>{SIMV.chrome=se.value==='chrome';simFit();};return se;})(),
+    h('button',{onclick:()=>ACT.login()},AUTH.ok()?'Google: conectado ✓':'Entrar con Google'),
+    h('button',{onclick:()=>{carOff();location.href='./';}},'Salir del simulador'));
+  const keys=h('div',{id:'simKeys'},h('span',{style:'color:#9a917f'},'Mandos del volante / radio:'),
+    ...[['MediaTrackPrevious','⏮ Anterior'],['MediaPlayPause','⏯ Play/Pausa'],['MediaTrackNext','⏭ Siguiente'],['AudioVolumeMute','🔇 Mute']].map(([k,l])=>h('button',{onclick:()=>dispatchEvent(new KeyboardEvent('keydown',{key:k,code:k,bubbles:true,cancelable:true}))},l)));
+  const ch=h('div',{id:'simChrome'},h('div',{class:'sy'},'◁','⌂','▢',h('span',{style:'margin-left:auto'},'17:51')),h('div',{class:'tb'},'● La Guantera'),h('div',{class:'ur'},h('span',null,'jaimebeltran-at.github.io/la-guantera/#coche')));
+  document.body.append(bar,keys,ch);addEventListener('resize',simFit);if(!document.body.classList.contains('carmode'))carOn();simFit();}
+const SIMV={chrome:false};
+function simFit(){if(!SIM)return;const k=Math.min(1,(innerWidth-80)/1024,(innerHeight-150)/600),W=1024*k,H=600*k,x=(innerWidth-W)/2,y=Math.max(64,(innerHeight-H)/2),c=$('#car'),cb=$('#simChrome'),top=SIMV.chrome?128*k:0;
+  [['left',x],['top',y+top],['width',W],['height',H-top]].forEach(([p,v])=>c.style.setProperty(p,v+'px','important'));
+  Object.assign(cb.style,{display:SIMV.chrome?'flex':'none',left:x+'px',top:y+'px',width:'1024px',height:'128px',transform:'scale('+k+')'});
+  setTimeout(()=>{try{carFit();}catch{}},30);}
+</script>
 <script>try{boot();}catch(e){console.error('boot',e);}</script>
 <script src="https://accounts.google.com/gsi/client" async onload="gisReady()"></script>
 </body>
