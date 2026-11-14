@@ -1875,6 +1875,11 @@ button{font-family:inherit;-webkit-tap-highlight-color:transparent;outline:none}
 
 .dial .hd{top:15px;font-size:13px}.dial .ft{bottom:16px;font-size:15px}
 .snow{display:none!important}
+
+/* lo que cambia a menudo va en su propia capa pequeña: moverlo o reescribirlo no obliga a repintar el dial ni la pantalla con todas sus sombras */
+.dial .needle,.dial .spill{top:0;will-change:transform}
+.dial .needle.snap,.dial .spill.snap{transition:transform .3s cubic-bezier(.3,1.2,.5,1)}
+.dial .ft,.comet,.big,.rem,.hrow,canvas.leds{will-change:transform}
 </style><script type="text/x-tpl"><div style="width: 1024px; height: 600px; position: relative; overflow: hidden; background-color: #0e0f11; background-image: radial-gradient(rgba(255,255,255,.028) .8px, transparent 1.1px), linear-gradient(#131416, #0a0b0c); background-size: 3px 3px, 100% 100%; font-family: 'Barlow Condensed', sans-serif; color: #dcdad3">
 <div class="hous" style="left: 18px; right: 184px; top: 12px; height: 322px"></div>
 
@@ -1903,15 +1908,15 @@ button{font-family:inherit;-webkit-tap-highlight-color:transparent;outline:none}
 <div class="hd">EMISORAS</div>
 <div class="sc">
 <div class="spine"></div>
-<div class="{{spillCls}}" style="top: {{needleY}}px"></div>
+<div class="{{spillCls}}" style="transform: translateY({{needleY}}px)"></div>
 <sc-for list="{{ticks}}" as="k" hint-placeholder-count="41"><div style="{{k}}"></div></sc-for>
 <sc-for list="{{nums}}" as="n" hint-placeholder-count="5"><div style="{{n.style}}">{{n.v}}</div></sc-for>
 <sc-for list="{{stations}}" as="s" hint-placeholder-count="5"><div style="{{s.dot}}"></div><div style="{{s.lab}}">{{s.n}}</div></sc-for>
-<div class="{{needleCls}}" style="top: {{needleY}}px"></div>
+<div class="{{needleCls}}" style="transform: translateY({{needleY}}px)"></div>
 </div>
 <div class="ft">{{dialFoot}}</div>
 <div class="glow"></div>
-<div class="touch" onPointerDown="{{dDown}}" onPointerMove="{{dMove}}" onPointerUp="{{dUp}}" onPointerCancel="{{dUp}}" role="slider" aria-label="Elegir emisora" aria-valuemin="20" aria-valuemax="60" aria-valuenow="{{freqR}}" tabindex="0"></div>
+<div class="touch" onPointerDown="{{dDown}}" onPointerMove="{{dMove}}" onPointerUp="{{dUp}}" onPointerCancel="{{dUp}}" onPointerLeave="{{dUp}}" role="slider" aria-label="Elegir emisora" aria-valuemin="20" aria-valuemax="60" aria-valuenow="{{freqR}}" tabindex="0"></div>
 </div>
 
 <div class="chan" style="left: 18px; right: 184px; top: 346px; height: 242px"><div class="trim"></div>
@@ -2409,9 +2414,12 @@ class Component extends DCLogic {
       title: ttlTxt, ttlCls: 'mq ttl' + (ttlMove ? '' : ' still'), ttlTail: ttlMove ? '\u00a0\u00a0·\u00a0\u00a0' + ttlTxt + '\u00a0\u00a0·\u00a0\u00a0' : '', sub, subTail: subMove ? '  ·  ' + sub + '  ·  ' : '', subCls: 'mq sub' + (subMove ? ' mv' : ''),
       elapsed: mm(t), left: mm(Math.max(0, s.d - t)), next: nx.t + ' · ' + nx.a,
       hasMsg: !!st.msg, msg: st.msg || '', msgKey: 'm' + st.mk,
-      dDown: e => { try { this.rect = e.currentTarget.getBoundingClientRect(); e.currentTarget.setPointerCapture(e.pointerId); } catch (x) {} this.startNoise(); const f = this.freqAt(e.clientY); this.setNoise(this.near(f).noise); this.setState({ drag: true, freq: f }); },
-      dMove: e => { if (!this.state.drag) return; const f = this.freqAt(e.clientY); this.setNoise(this.near(f).noise); this.setState({ freq: f }); },
-      dUp: () => { if (!this.state.drag) return; this.stopNoise(); const n = this.near(this.state.freq), S2 = this.stations(); const ch = n.k !== this.state.stn || P.src !== S2[n.k].key; this.setState({ drag: false, freq: S2[n.k].f, stn: n.k }); if (ch) this.tune(n.k); }
+      dDown: e => { try { this.rect = e.currentTarget.getBoundingClientRect(); e.currentTarget.setPointerCapture(e.pointerId); } catch (x) {} this.dragAt = Date.now(); this.dragKey = ''; this.startNoise(); const f = this.freqAt(e.clientY); this.setNoise(this.near(f).noise); this.setState({ drag: true, freq: f }); },
+      dMove: e => { if (!this.state.drag) return; const f = this.freqAt(e.clientY), nr2 = this.near(f); this.setNoise(nr2.noise); this.dragAt = Date.now();
+        const key = nr2.k + ':' + (nr2.noise === 0); if (key !== this.dragKey) { this.dragKey = key; this.setState({ freq: f }); return; }
+        this.state.freq = f; this._html = null; if (this.dragRaf) return; this.dragRaf = requestAnimationFrame(() => { this.dragRaf = 0; const r = this._root; if (!r || !this.state.drag) return; const y = ((this.state.freq - 20) / 40 * 480).toFixed(1), n1 = r.querySelector('.dial .needle'), n2 = r.querySelector('.dial .spill'), ft = r.querySelector('.dial .ft');
+          if (n1) n1.style.transform = 'translateY(' + y + 'px)'; if (n2) n2.style.transform = 'translateY(' + y + 'px)'; const nn = this.near(this.state.freq); if (ft && nn.noise !== 0) ft.textContent = this.state.freq.toFixed(1) + ' Hz · · ·'; }); },
+      dUp: e => { if (!this.state.drag) return; if (e && e.type === 'pointerup' && e.clientY) this.state.freq = this.freqAt(e.clientY); this.stopNoise(); const n = this.near(this.state.freq), S2 = this.stations(); const ch = n.k !== this.state.stn || P.src !== S2[n.k].key; this.setState({ drag: false, freq: S2[n.k].f, stn: n.k }); if (ch) this.tune(n.k); }
     };
   }
 }
@@ -2722,7 +2730,7 @@ class CarUI extends Component{
   covLv(x,y){return this.lv?this.lv[y*44+x]:super.covLv(x,y);}
   setCov(lv){this.lv=lv;const M={1:6,2:4,3:2,4:3};this.cov=[];for(let y=0;y<44;y++)for(let x=0;x<44;x++){const l=this.covLv(x,y);if(l)this.cov.push([x,y,M[l]]);}this._sig='';this.setState({ck:(this.state.ck||0)+1});}
   loadCov(t){const cid=t&&t.c||'';if(cid===this.covId)return;this.covId=cid;if(!cid){this.setCov(null);return;}
-    COV.url(cid).then(u=>{if(this.covId!==cid)return;if(!u){this.setCov(null);return;}const im=new Image();
+    COV.url(cid).then(u=>{if(this.covId!==cid)return;if(!u){this.setCov(null);return;}const im=new Image();im.decoding='async';
       im.onload=()=>{if(this.covId!==cid)return;try{const c=document.createElement('canvas');c.width=c.height=44;const x=c.getContext('2d',{willReadFrequently:true});const s=Math.min(im.width,im.height);
         x.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,44,44);const d=x.getImageData(0,0,44,44).data,L=new Float32Array(1936);let mn=1,mx=0;
         for(let i=0;i<1936;i++){const v=(d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11)/255;L[i]=v;if(v<mn)mn=v;if(v>mx)mx=v;}
@@ -2733,7 +2741,7 @@ class CarUI extends Component{
       im.onerror=()=>{if(this.covId===cid)this.setCov(null);};im.src=u;}).catch(()=>{});}
   /* ----- latido principal: copia el estado real y mueve las animaciones ----- */
   wink(){const st=this._root;if(!st)return;if(this.wk!=null){st.style.setProperty('--b'+this.wk,'1');this.wk=null;}else if(Math.random()<.035){this.wk=Math.floor(Math.random()*4);st.style.setProperty('--b'+this.wk,(.72+Math.random()*.16).toFixed(2));}}
-  tick(){this.fl=(this.fl||0)+1;this.wink();const c=this._cur=this.cur(),st=this.state,n=c.n,A=this.anim;
+  tick(){this.fl=(this.fl||0)+1;this.wink();if(this.state.drag&&Date.now()-(this.dragAt||0)>2500){try{this.stopNoise();}catch{}const n=this.near(this.state.freq);this.setState({drag:false,freq:this.ST[n.k].f,stn:n.k});if(P.src!==this.ST[n.k].key)this.tune(n.k);}const c=this._cur=this.cur(),st=this.state,n=c.n,A=this.anim;
     if(this.stSig!==S.tracks.size+':'+S.artists.length+':'+(likedIds().length?1:0))this.buildStations();
     this.syncStation();
     if(this.applied==='radio'&&P.current&&P.src!=='radio'){prefs.radio=false;P.radioSeed=null;this.radioLb='';this.applied='shuf';this.prevMode='shuf';LS.set('carMode','shuf');if(st.mode==='radio')this.setState({mode:'shuf'});} // han puesto otra cosa (álbum, DJ…): la radio se apaga
@@ -2757,7 +2765,7 @@ class CarUI extends Component{
     /* La pantalla entera solo se vuelve a montar cuando cambia algo que se ve en ella (el segundo, la barra, un testigo, la canción…).
        El resto de latidos solo redibujan la matriz de LEDs (personajes y centelleo), que es baratísimo. Así la tablet tiene el procesador libre para los dedos. */
     const d=c.d,p=o.t/d,dom=[c.id,c.t,c.a,Math.round(d),Math.floor(o.t),Math.floor(Math.max(0,d-o.t)),Math.round(p*73),Math.round(p*39),ph,ph==='out'&&pf<5,o.playing,o.like,o.fund,o.mute,o.mode||st.mode,tr,new Date().getMinutes(),P.src,this.radioLb||'',Math.floor(Date.now()/3200)].join('|');
-    if(dom===this._dom&&!this._q){Object.assign(this.state,o);if(ph!=='cover'||!(this.fl&7))this.light();return;}
+    if(dom===this._dom&&!this._q){Object.assign(this.state,o);if((ph!=='cover'&&!(window.__ex===3&&(this.fl&1)))||!(this.fl&7))this.light();return;}
     this._dom=dom;this.setState(o);}
   light(){const t0=performance.now();try{this._sg=this.stage();this.afterRender();}catch(e){}const L=window.__pl||(window.__pl={n:0,ms:0,mx:0}),d=performance.now()-t0;L.n++;L.ms+=d;if(d>L.mx)L.mx=d;}
   stage(){const k=this.anim.kind;if(k&&k!=='fito'){const keep=this.story;this.story=this.show(k);try{return super.stage();}finally{this.story=keep;}}return super.stage();}
@@ -2770,10 +2778,10 @@ class CarUI extends Component{
   afterRender(){const cv=this._cv&&this._cv.isConnected?this._cv:(this._cv=this._root.querySelector('canvas.leds')),sg=this._sg;if(!cv||!sg)return;
     const W=80,H=44,sc=cv.width/480;
     if(!this.gN){this.gN=new Uint8Array(W*H);this.gO=new Uint8Array(W*H);}
-    if(this._cvEl!==cv||this._cvW!==cv.width){this._cvEl=cv;this._cvW=cv.width;this.gO.fill(255);this.SP=null;this._cx=cv.getContext('2d');}
+    if(this._cvEl!==cv||this._cvW!==cv.width){this._cvEl=cv;this._cvW=cv.width;this.gO.fill(255);this.SP=null;this._cx=cv.getContext('2d',{desynchronized:true})||cv.getContext('2d');}
     if(!this.SP){const C=['','#7a300c','#ff7a1a','#ffc06a','#c4561a','#fff4e2','#6e2a0a'],F=[0,.55,.72,.86,.93,1],z=Math.round(6*sc);this.SP=[];
       C.forEach((hx,l)=>F.forEach((f,q)=>{if(!hx)return;const n=parseInt(hx.slice(1),16),col='rgb('+Math.round((n>>16)*f)+','+Math.round(((n>>8)&255)*f)+','+Math.round((n&255)*f)+')';
-        const s=document.createElement('canvas');s.width=s.height=z;const g=s.getContext('2d');g.scale(z/6,z/6);g.fillStyle=col;g.globalAlpha=.16;g.fillRect(0,0,6,6);g.globalAlpha=1;g.beginPath();g.arc(3,3,2.25,0,6.3);g.fill();this.SP[l*6+q]=s;}));}
+        const s=document.createElement('canvas');s.width=s.height=z;const g=s.getContext('2d');g.scale(z/6,z/6);g.fillStyle=col;g.globalAlpha=.16;g.fillRect(0,0,6,6);g.globalAlpha=1;g.beginPath();g.arc(3,3,2.25,0,6.3);g.fill();this.SP[l*6+q]=s;if(window.createImageBitmap)createImageBitmap(s).then(bm=>{if(this.SP)this.SP[l*6+q]=bm;}).catch(()=>{});}));}
     const g=this.gN,o=this.gO,x=this._cx;g.fill(0);
     for(const a of [sg.base,sg.cov,sg.over])for(let i=0;i<a.length;i+=3){const cx=a[i],cy=a[i+1];if(cx>=0&&cx<W&&cy>=0&&cy<H)g[cy*W+cx]=a[i+2];}
     x.setTransform(sc,0,0,sc,0,0);
@@ -2917,15 +2925,18 @@ html.sim .car{right:auto!important;bottom:auto!important;padding:0!important;bor
   const ch=h('div',{id:'simChrome'},h('div',{class:'sy'},'◁','⌂','▢',h('span',{style:'margin-left:auto'},'17:51')),h('div',{class:'tb'},'● La Guantera'),h('div',{class:'ur'},h('span',null,'jaimebeltran-at.github.io/la-guantera/#coche')));
   document.body.append(bar,keys,ch);addEventListener('resize',simFit);if(!document.body.classList.contains('carmode'))carOn();simFit();}
 /* medidor de fluidez (abre con ?medir): imágenes por segundo, peor parón y tiempo bloqueado, para probar en la tablet de verdad */
-const VER='v20';
-function medir(){const el=h('div',{style:'position:fixed;left:4px;top:4px;z-index:99;background:rgba(0,0,0,.86);color:#7CFC9A;font:600 13px/1.3 monospace;padding:5px 8px;border-radius:6px;pointer-events:none;white-space:pre;max-width:98vw;overflow:hidden'},'midiendo…');document.body.append(el);
+const VER='v21';
+function medir(){const el=h('div',{style:'position:fixed;left:4px;top:4px;z-index:99;background:rgba(0,0,0,.86);color:#7CFC9A;font:600 13px/1.3 monospace;padding:5px 8px;border-radius:6px;white-space:pre;max-width:98vw;overflow:hidden'},'midiendo…');document.body.append(el);
+  const EXP=['normal','A sin sombras ni filtros','B sin mascaras','C LEDs a mitad de ritmo','D sin capas propias'];let ex=0;window.__ex=0;const exS=document.createElement('style');
+  el.addEventListener('pointerup',e=>{e.stopPropagation();ex=(ex+1)%EXP.length;window.__ex=ex;const sr=document.getElementById('car2')&&document.getElementById('car2').shadowRoot;if(sr&&!exS.isConnected)sr.appendChild(exS);
+    exS.textContent=ex===1?'*,*::before,*::after{box-shadow:none!important;text-shadow:none!important;filter:none!important}':ex===2?'*{-webkit-mask-image:none!important;mask-image:none!important}.mi{background:#ff9a3c!important;border-radius:3px}':ex===4?'*{will-change:auto!important}':'';hist.length=0;},true);
   let gpu='?';try{const c=document.createElement('canvas'),g=c.getContext('webgl')||c.getContext('experimental-webgl');if(!g)gpu='SIN WebGL';else{const x=g.getExtension('WEBGL_debug_renderer_info');gpu=String(x?g.getParameter(x.UNMASKED_RENDERER_WEBGL):g.getParameter(g.RENDERER)).slice(0,60);}}catch(e){gpu='error';}
   const chr=(navigator.userAgent.match(/Chrome\/([\d.]+)/)||navigator.userAgent.match(/Firefox\/([\d.]+)/)||[,'?'])[1],and=(navigator.userAgent.match(/Android ([\d.]+)/)||[,'?'])[1];
   let n=0,worst=0,last=performance.now(),t0=last,lt=0,ltN=0,hist=[];try{new PerformanceObserver(li=>li.getEntries().forEach(e=>{lt+=e.duration;ltN++;})).observe({type:'longtask'});}catch{lt=-1;}
   const f=t=>{const d=t-last;last=t;n++;if(d>worst)worst=d;if(t-t0>=2000){const fps=Math.round(n*1000/(t-t0));hist.push(fps);if(hist.length>30)hist.shift();
       const R=window.__pf||{n:0,ms:0,mx:0},L=window.__pl||{n:0,ms:0,mx:0},sec=(t-t0)/1000;let car=null;try{car=CAR;}catch{}
       const tg=(()=>{try{return Object.keys(ART).length;}catch{return 0;}})();
-      el.textContent=VER+'  '+fps+' img/s  peor '+Math.round(worst)+' ms  media '+Math.round(hist.reduce((a,b)=>a+b,0)/hist.length)+'  bloqueado '+(lt<0?'n/d':Math.round(lt/(t-t0)*100)+'% ('+ltN+')')+
+      el.textContent='PRUEBA: '+EXP[ex]+'  (toca aqui para cambiar)\n'+VER+'  '+fps+' img/s  peor '+Math.round(worst)+' ms  media '+Math.round(hist.reduce((a,b)=>a+b,0)/hist.length)+'  bloqueado '+(lt<0?'n/d':Math.round(lt/(t-t0)*100)+'% ('+ltN+')')+
         '\npantalla '+innerWidth+'x'+innerHeight+' dpr'+(devicePixelRatio||1)+'  Chrome '+chr+'  Android '+and+'  nucleos '+(navigator.hardwareConcurrency||'?')+'  mem '+(navigator.deviceMemory||'?')+'G'+(document.fullscreenElement?'  COMPLETA':'  con barras')+
         '\nGPU '+gpu+
         '\nmontajes '+(R.n/sec).toFixed(1)+'/s '+(R.n?Math.round(R.ms/R.n):0)+' ms (max '+Math.round(R.mx)+')   LEDs '+(L.n/sec).toFixed(1)+'/s '+(L.n?(L.ms/L.n).toFixed(1):0)+' ms (max '+Math.round(L.mx)+')'+
