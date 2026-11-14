@@ -2925,25 +2925,25 @@ html.sim .car{right:auto!important;bottom:auto!important;padding:0!important;bor
   const ch=h('div',{id:'simChrome'},h('div',{class:'sy'},'◁','⌂','▢',h('span',{style:'margin-left:auto'},'17:51')),h('div',{class:'tb'},'● La Guantera'),h('div',{class:'ur'},h('span',null,'jaimebeltran-at.github.io/la-guantera/#coche')));
   document.body.append(bar,keys,ch);addEventListener('resize',simFit);if(!document.body.classList.contains('carmode'))carOn();simFit();}
 /* medidor de fluidez (abre con ?medir): imágenes por segundo, peor parón y tiempo bloqueado, para probar en la tablet de verdad */
-const VER='v21';
+const VER='v22';
 function medir(){const el=h('div',{style:'position:fixed;left:4px;top:4px;z-index:99;background:rgba(0,0,0,.86);color:#7CFC9A;font:600 13px/1.3 monospace;padding:5px 8px;border-radius:6px;white-space:pre;max-width:98vw;overflow:hidden'},'midiendo…');document.body.append(el);
   const EXP=['normal','A sin sombras ni filtros','B sin mascaras','C LEDs a mitad de ritmo','D sin capas propias'];let ex=0;window.__ex=0;const exS=document.createElement('style');
   el.addEventListener('pointerup',e=>{e.stopPropagation();ex=(ex+1)%EXP.length;window.__ex=ex;const sr=document.getElementById('car2')&&document.getElementById('car2').shadowRoot;if(sr&&!exS.isConnected)sr.appendChild(exS);
     exS.textContent=ex===1?'*,*::before,*::after{box-shadow:none!important;text-shadow:none!important;filter:none!important}':ex===2?'*{-webkit-mask-image:none!important;mask-image:none!important}.mi{background:#ff9a3c!important;border-radius:3px}':ex===4?'*{will-change:auto!important}':'';hist.length=0;},true);
   let gpu='?';try{const c=document.createElement('canvas'),g=c.getContext('webgl')||c.getContext('experimental-webgl');if(!g)gpu='SIN WebGL';else{const x=g.getExtension('WEBGL_debug_renderer_info');gpu=String(x?g.getParameter(x.UNMASKED_RENDERER_WEBGL):g.getParameter(g.RENDERER)).slice(0,60);}}catch(e){gpu='error';}
-  const chr=(navigator.userAgent.match(/Chrome\/([\d.]+)/)||navigator.userAgent.match(/Firefox\/([\d.]+)/)||[,'?'])[1],and=(navigator.userAgent.match(/Android ([\d.]+)/)||[,'?'])[1];
-  let n=0,worst=0,last=performance.now(),t0=last,lt=0,ltN=0,hist=[];try{new PerformanceObserver(li=>li.getEntries().forEach(e=>{lt+=e.duration;ltN++;})).observe({type:'longtask'});}catch{lt=-1;}
+  const ua=navigator.userAgent,chr=(m=>m?m[1]+' '+m[2]:'?')(ua.match(/(Firefox|EdgA|Edg|OPR|SamsungBrowser|Chrome)\/([\d.]+)/)),and=(navigator.userAgent.match(/Android ([\d.]+)/)||[,'?'])[1];
+  let n=0,worst=0,last=performance.now(),t0=last,lt=0,ltN=0,hist=[];try{if(!(PerformanceObserver.supportedEntryTypes||[]).includes('longtask'))throw 0;new PerformanceObserver(li=>li.getEntries().forEach(e=>{lt+=e.duration;ltN++;})).observe({type:'longtask'});}catch{lt=-1;}
   const f=t=>{const d=t-last;last=t;n++;if(d>worst)worst=d;if(t-t0>=2000){const fps=Math.round(n*1000/(t-t0));hist.push(fps);if(hist.length>30)hist.shift();
       const R=window.__pf||{n:0,ms:0,mx:0},L=window.__pl||{n:0,ms:0,mx:0},sec=(t-t0)/1000;let car=null;try{car=CAR;}catch{}
       const tg=(()=>{try{return Object.keys(ART).length;}catch{return 0;}})();
       el.textContent='PRUEBA: '+EXP[ex]+'  (toca aqui para cambiar)\n'+VER+'  '+fps+' img/s  peor '+Math.round(worst)+' ms  media '+Math.round(hist.reduce((a,b)=>a+b,0)/hist.length)+'  bloqueado '+(lt<0?'n/d':Math.round(lt/(t-t0)*100)+'% ('+ltN+')')+
-        '\npantalla '+innerWidth+'x'+innerHeight+' dpr'+(devicePixelRatio||1)+'  Chrome '+chr+'  Android '+and+'  nucleos '+(navigator.hardwareConcurrency||'?')+'  mem '+(navigator.deviceMemory||'?')+'G'+(document.fullscreenElement?'  COMPLETA':'  con barras')+
+        '\npantalla '+innerWidth+'x'+innerHeight+' dpr'+(devicePixelRatio||1)+'  '+chr+'  Android '+and+'  nucleos '+(navigator.hardwareConcurrency||'?')+'  mem '+(navigator.deviceMemory||'?')+'G'+(document.fullscreenElement?'  COMPLETA':'  con barras')+
         '\nGPU '+gpu+
         '\nmontajes '+(R.n/sec).toFixed(1)+'/s '+(R.n?Math.round(R.ms/R.n):0)+' ms (max '+Math.round(R.mx)+')   LEDs '+(L.n/sec).toFixed(1)+'/s '+(L.n?(L.ms/L.n).toFixed(1):0)+' ms (max '+Math.round(L.mx)+')'+
         '\nmusica '+S.tracks.size+' canc  '+S.artists.length+' art  clasif '+tg+'  clave '+((S.cfg.apiKey||'').trim()?'si':'NO')+'  red '+(navigator.onLine?'si':'NO')+'  google '+(AUTH.ok()?'si':'NO')+
         '\nsuena '+(P.src||'-')+'  modo '+(car?car.applied:'-')+'  cola '+(P.qi+1)+'/'+P.q.length+'  '+(AE.el.paused?'PAUSA':'PLAY')+(AE.el.muted?' MUTE':'')+
         '\nmandos: '+(EVLOG.slice(-4).join(' | ')||'(pulsa flechas/mute del volante)');
-      el.style.color=fps>=45?'#7CFC9A':fps>=25?'#ffd166':'#ff6b6b';window.__pf={n:0,ms:0,mx:0};window.__pl={n:0,ms:0,mx:0};n=0;worst=0;lt=0;ltN=0;t0=t;}
+      el.style.color=fps>=45?'#7CFC9A':fps>=25?'#ffd166':'#ff6b6b';window.__pf={n:0,ms:0,mx:0};window.__pl={n:0,ms:0,mx:0};n=0;worst=0;if(lt>=0)lt=0;ltN=0;t0=t;}
     requestAnimationFrame(f);};requestAnimationFrame(f);}
 const SIMV={chrome:false};
 /* biblioteca de mentira (abre con ?demo): artistas de verdad con pitidos de prueba, para ensayar emisoras, radio y modos sin Drive */
