@@ -1614,17 +1614,17 @@ button{-webkit-tap-highlight-color:transparent}
 .dots{position:absolute;left:.75px;top:.75px;width:4.5px;height:4.5px;border-radius:50%}
 .scanw{position:absolute;left:0;top:0;width:264px;height:264px;overflow:hidden;pointer-events:none}
 .scan{position:absolute;left:0;right:0;top:-64px;height:64px;opacity:0;background:linear-gradient(180deg,transparent 0%,rgba(255,226,190,.035) 34%,rgba(255,234,206,.11) 60%,rgba(255,248,236,.24) 71%,rgba(255,238,215,.07) 79%,transparent 100%);filter:brightness(var(--sb,1)) opacity(var(--so,1));will-change:transform;-webkit-mask-image:linear-gradient(90deg,rgba(0,0,0,.35) 0%,#000 13%,rgba(0,0,0,.6) 31%,#000 49%,rgba(0,0,0,.78) 64%,rgba(0,0,0,.42) 83%,#000 100%);mask-image:linear-gradient(90deg,rgba(0,0,0,.35) 0%,#000 13%,rgba(0,0,0,.6) 31%,#000 49%,rgba(0,0,0,.78) 64%,rgba(0,0,0,.42) 83%,#000 100%);-webkit-mask-size:220% 100%;mask-size:220% 100%;animation:none}
-.scan::after{content:"";position:absolute;left:0;right:0;top:45px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,252,244,.22) 18%,rgba(255,252,244,.08) 40%,rgba(255,252,244,.26) 63%,transparent);animation:bulb 2.3s infinite}
+.scan::after{content:"";position:absolute;left:0;right:0;top:45px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,252,244,.22) 18%,rgba(255,252,244,.08) 40%,rgba(255,252,244,.26) 63%,transparent);opacity:var(--b3,1)}
 @keyframes scanP{0%{transform:translateY(0);opacity:0}5%{opacity:1}91%{opacity:1}100%{transform:translateY(330px);opacity:0}}
 @keyframes scanM{from{-webkit-mask-position:0 0;mask-position:0 0}to{-webkit-mask-position:-120% 0;mask-position:-120% 0}}
 .dv{flex:none;width:1px;align-self:stretch;margin:20px 16px;background:#1b1c1f}
 .info{flex:1;min-width:0;align-self:stretch;padding:16px 10px 16px 0;display:flex;flex-direction:column;justify-content:space-between;font-family:'Doto',monospace;font-weight:900;color:#ff8a1f;text-shadow:0 0 8px rgba(255,120,20,.55)}
-.mq{overflow:hidden;white-space:nowrap;text-transform:uppercase;mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
+.mq{overflow:hidden;white-space:nowrap;text-transform:uppercase}
 .mq>div{display:inline-block}
 .ttl{font-size:34px;transition:font-size .6s}
-.ttl>div{animation:mq 15s linear infinite}
+
 .sub{font-size:18px;opacity:.72;transition:font-size .6s}
-.sub.mv>div{animation:mq 20s linear infinite}
+
 .big{font-size:84px;line-height:.9;transition:font-size .6s}
 .rem{font-size:26px;opacity:.8;transition:font-size .6s}
 .nx{font-size:15px;opacity:.5;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-height:20px;transition:opacity .5s,max-height .5s}
@@ -1645,7 +1645,7 @@ button{-webkit-tap-highlight-color:transparent}
 .dial{position:absolute;border-radius:16px;overflow:hidden;background:linear-gradient(#0d0a07,#060504);box-shadow:inset 0 0 0 2px #1b1c1f,inset 0 10px 24px rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.07)}
 .dial .glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(120% 60% at 50% 100%,rgba(255,140,40,.13),transparent 70%),linear-gradient(160deg,rgba(255,255,255,.07),transparent 35%)}
 .dial .hd{position:absolute;left:0;right:0;top:11px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:.26em;color:#9a6a3c}
-.dial .sc{position:absolute;left:0;right:0;top:36px;height:216px;animation:bulb 6.7s infinite}
+.dial .sc{position:absolute;left:0;right:0;top:36px;height:216px;}
 .dial .needle{position:absolute;left:6px;right:6px;height:3px;margin-top:-1.5px;border-radius:2px;background:#ff3d1a;box-shadow:0 0 10px #ff4a1a,0 0 22px rgba(255,74,26,.5)}
 .dial .needle.snap{transition:top .4s cubic-bezier(.3,1.4,.5,1)}
 .dial .ft{position:absolute;left:0;right:0;bottom:10px;text-align:center;font-family:'Doto',monospace;font-weight:900;font-size:14px;color:#ffb35c;text-shadow:0 0 6px rgba(255,140,40,.6)}
@@ -1662,15 +1662,15 @@ button{-webkit-tap-highlight-color:transparent}
 .k1 .lamp{position:absolute;bottom:22px;width:46px;height:8px;border-radius:2px;background:#2a1607;box-shadow:inset 0 1px 2px #000}
 .k1:active,.k1.dn{transform:perspective(420px) rotateX(-6deg) translateY(7px);box-shadow:inset 0 -4px 6px rgba(0,0,0,.45),0 2px 0 #0a0a0b,0 3px 0 #000,0 5px 6px rgba(0,0,0,.6)}
 .k1:active .lamp,.k1.dn .lamp,.k1.push.lit .lamp{background:#2a1607;box-shadow:inset 0 1px 2px #000;animation:none}
-.k1 .lamp::after{content:"";position:absolute;left:3px;right:3px;top:50%;height:3px;margin-top:-1.5px;border-radius:2px;background:linear-gradient(90deg,#b04a0c,#ff8a24 20%,#ffae58 50%,#ff8a24 80%,#b04a0c);box-shadow:0 0 4px #ff8a1f,0 0 10px rgba(255,138,31,.85),0 0 22px rgba(255,130,30,.45),0 0 40px rgba(255,115,20,.2);display:none;animation:bulb 3.9s infinite}
+.k1 .lamp::after{content:"";position:absolute;left:3px;right:3px;top:50%;height:3px;margin-top:-1.5px;border-radius:2px;background:linear-gradient(90deg,#b04a0c,#ff8a24 20%,#ffae58 50%,#ff8a24 80%,#b04a0c);box-shadow:0 0 4px #ff8a1f,0 0 10px rgba(255,138,31,.85),0 0 22px rgba(255,130,30,.45),0 0 40px rgba(255,115,20,.2);display:none;opacity:var(--b1,1)}
 .k1:active .lamp::after,.k1.dn .lamp::after,.k1.push.lit .lamp::after{display:block}
 .k1 .kspill{position:absolute;left:8px;right:8px;bottom:6px;height:64px;border-radius:0 0 12px 12px;background:radial-gradient(55% 60% at 50% 82%,rgba(255,138,31,.28),transparent 75%);opacity:0;transition:opacity .25s;pointer-events:none}
-.k1.dn .kspill,.k1:active .kspill,.k1.push.lit .kspill{opacity:1;background:radial-gradient(50% 50% at 50% 78%,rgba(255,140,40,.17),transparent 70%);animation:bulb 3.9s infinite}
+.k1.dn .kspill,.k1:active .kspill,.k1.push.lit .kspill{opacity:1;background:radial-gradient(50% 50% at 50% 78%,rgba(255,140,40,.17),transparent 70%);}
 /* play / pausa: el mismo rojo que la aguja del dial (línea fina, mismo brillo, mismo parpadeo) */
 .k1.pp:active .lamp,.k1.pp.dn .lamp{background:#2a1607;box-shadow:inset 0 1px 2px #000;animation:none}
-.k1.pp .lamp::after{content:"";position:absolute;left:3px;right:3px;top:50%;height:3px;margin-top:-1.5px;border-radius:2px;background:linear-gradient(90deg,#c22a10,#ff5a2a 20%,#ff7a4a 50%,#ff5a2a 80%,#c22a10);box-shadow:0 0 4px #ff4a1a,0 0 10px #ff4a1a,0 0 22px rgba(255,74,26,.55),0 0 40px rgba(255,60,20,.25);display:none;animation:bulb 4.3s infinite}
+.k1.pp .lamp::after{content:"";position:absolute;left:3px;right:3px;top:50%;height:3px;margin-top:-1.5px;border-radius:2px;background:linear-gradient(90deg,#c22a10,#ff5a2a 20%,#ff7a4a 50%,#ff5a2a 80%,#c22a10);box-shadow:0 0 4px #ff4a1a,0 0 10px #ff4a1a,0 0 22px rgba(255,74,26,.55),0 0 40px rgba(255,60,20,.25);display:none;opacity:var(--b3,1)}
 .k1.pp:active .lamp::after,.k1.pp.dn .lamp::after{display:block}
-.k1.pp:active .kspill,.k1.pp.dn .kspill{background:radial-gradient(50% 50% at 50% 78%,rgba(255,80,30,.2),transparent 70%);animation:bulb 4.3s infinite}
+.k1.pp:active .kspill,.k1.pp.dn .kspill{background:radial-gradient(50% 50% at 50% 78%,rgba(255,80,30,.2),transparent 70%);}
 
 /* me gusta: pulsar y volver. El piloto solo late al darle a "me gusta"; al quitarlo, la tecla no se enciende */
 @keyframes beat{0%{background:#2a1607;box-shadow:inset 0 1px 2px #000}7%{background:#ffb35c;box-shadow:0 0 12px #ff8a1f,0 0 26px rgba(255,138,31,.6)}16%{background:#6a2e0c;box-shadow:0 0 3px rgba(255,138,31,.25)}25%{background:#ffc070;box-shadow:0 0 14px #ff9a3c,0 0 30px rgba(255,138,31,.7)}50%{background:#b4500f;box-shadow:0 0 8px rgba(255,138,31,.45)}100%{background:#2a1607;box-shadow:inset 0 1px 2px #000}}
@@ -1773,7 +1773,7 @@ button{-webkit-tap-highlight-color:transparent}
 /* Claude DJ: pulsas, hablas y Claude monta la lista. Vúmetro analógico retroiluminado para la voz */
 .djov{position:absolute;inset:0;font-family:'Doto',monospace;font-weight:900;color:#ff8a1f;text-shadow:0 0 8px rgba(255,120,20,.55)}
 .vu{position:absolute;left:22px;top:22px;width:262px;height:188px;padding:5px;box-sizing:border-box;border-radius:10px;background:linear-gradient(180deg,#46474b,#1b1c1e 60%,#111213);box-shadow:0 0 0 1px #000,inset 0 1px 0 rgba(255,255,255,.16),0 5px 12px rgba(0,0,0,.85)}
-.vuface{position:relative;width:252px;height:178px;border-radius:6px;overflow:hidden;background:radial-gradient(115% 95% at 50% 92%,#ffe6b4 0%,#ffcb78 30%,#f29d3a 62%,#b4561a 100%);box-shadow:inset 0 0 22px rgba(70,20,0,.65),inset 0 2px 6px rgba(0,0,0,.55);animation:bulbO 5.3s infinite}
+.vuface{position:relative;width:252px;height:178px;border-radius:6px;overflow:hidden;background:radial-gradient(115% 95% at 50% 92%,#ffe6b4 0%,#ffcb78 30%,#f29d3a 62%,#b4561a 100%);box-shadow:inset 0 0 22px rgba(70,20,0,.65),inset 0 2px 6px rgba(0,0,0,.55);opacity:var(--b3,1)}
 .vuface::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(90,40,0,.2) .6px,transparent .9px),radial-gradient(rgba(255,255,255,.14) .5px,transparent .8px);background-size:3px 3px,5px 4px;background-position:0 0,1px 2px;pointer-events:none}
 .vusc{position:absolute;left:0;top:0;width:252px;height:178px}
 .vusc .pc{font-size:8px}
@@ -1804,11 +1804,11 @@ button{-webkit-tap-highlight-color:transparent}
 .k1.cyc .trio>span{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:9px;letter-spacing:.12em;color:#8f8a80}
 .k1.cyc .tl{width:24px;height:6px;border-radius:2px;background:#2a1607;box-shadow:inset 0 1px 2px #000;transition:background .2s,box-shadow .2s}
 .k1.cyc .tl{position:relative}
-.k1.cyc .tl.on::after,.djmic.on::after{content:"";position:absolute;left:2px;right:2px;top:50%;height:2px;margin-top:-1px;border-radius:1px;background:linear-gradient(90deg,#b04a0c,#ff8a24 20%,#ffae58 50%,#ff8a24 80%,#b04a0c);box-shadow:0 0 3px #ff8a1f,0 0 8px rgba(255,138,31,.7),0 0 16px rgba(255,125,25,.3);animation:bulb 4.4s infinite}
+.k1.cyc .tl.on::after,.djmic.on::after{content:"";position:absolute;left:2px;right:2px;top:50%;height:2px;margin-top:-1px;border-radius:1px;background:linear-gradient(90deg,#b04a0c,#ff8a24 20%,#ffae58 50%,#ff8a24 80%,#b04a0c);box-shadow:0 0 3px #ff8a1f,0 0 8px rgba(255,138,31,.7),0 0 16px rgba(255,125,25,.3);opacity:var(--b0,1)}
 .k1.cyc .tl.on+span,.k1.cyc .trio>span.on{color:#ffb35c}
 .swipe{position:absolute;inset:0;cursor:grab;touch-action:pan-y}
-.krow>*:nth-child(2n) .lamp::after{animation:bulb 4.7s infinite}.krow>*:nth-child(2n) .kspill{animation-duration:4.7s}
-.krow>*:nth-child(3n) .lamp::after{animation:bulb 5.3s infinite}.krow>*:nth-child(3n) .kspill{animation-duration:5.3s}
+.krow>*:nth-child(2n) .lamp::after{opacity:var(--b3,1)}.krow>*:nth-child(2n) .kspill{animation-duration:4.7s}
+.krow>*:nth-child(3n) .lamp::after{opacity:var(--b3,1)}.krow>*:nth-child(3n) .kspill{animation-duration:5.3s}
 
 /* tecla basculante aleatorio / repetir */
 .rk{position:relative;flex:1 1 0;min-width:0;height:198px;perspective:520px}
@@ -1822,26 +1822,26 @@ button{-webkit-tap-highlight-color:transparent}
 .rk .h.on{color:#ffb35c}
 .rk .mid{height:2px;margin:0 10px;background:#08090a;box-shadow:0 1px 0 rgba(255,255,255,.07)}
 .rk .lp{width:34px;height:6px;border-radius:2px;background:#2a1607;box-shadow:inset 0 1px 2px #000;transition:background .25s,box-shadow .25s}
-.rk .h.on .lp{background:#ff8a1f;box-shadow:0 0 10px #ff8a1f,0 0 22px rgba(255,138,31,.5);animation:bulb 4.4s infinite}
+.rk .h.on .lp{background:#ff8a1f;box-shadow:0 0 10px #ff8a1f,0 0 22px rgba(255,138,31,.5);opacity:var(--b0,1)}
 
 /* efecto lámpara: brillo con parpadeo suave e irregular, como las bombillas de un dial */
 @keyframes bulbO{0%,100%{opacity:1}6%{opacity:.9}8%{opacity:1}33%{opacity:.86}35%{opacity:1}62%{opacity:.96}79%{opacity:.91}81%{opacity:1}}
 @keyframes bulb{0%,100%{opacity:1}6%{opacity:.86}8%{opacity:1}31%{opacity:.95}33%{opacity:.8}34%{opacity:.98}58%{opacity:.93}76%{opacity:1}79%{opacity:.87}81%{opacity:1}}
 @keyframes bulbF{0%,100%{filter:brightness(1)}6%{filter:brightness(.9)}8%{filter:brightness(1.05)}33%{filter:brightness(.86)}35%{filter:brightness(1.02)}62%{filter:brightness(.96)}79%{filter:brightness(.91)}81%{filter:brightness(1.04)}}
-.lay{animation:bulb 6.3s infinite}
-.info{animation:bulbO 7.1s infinite}
-.ts.on svg{animation:bulb 4.9s infinite}
+.lay{}
+.info{}
+.ts.on svg{opacity:var(--b1,1)}
 .hrow{display:flex;justify-content:space-between;align-items:baseline;font-size:16px;transition:font-size .6s}
 .cp .hrow{font-size:14px}
-.dial .needle{left:4px;right:4px;background:linear-gradient(90deg,#c22a10,#ff5a2a 20%,#ff7a4a 50%,#ff5a2a 80%,#c22a10);box-shadow:0 0 4px #ff4a1a,0 0 10px #ff4a1a,0 0 22px rgba(255,74,26,.55),0 0 40px rgba(255,60,20,.25);animation:bulb 4.3s infinite}
-.dial .spill{position:absolute;left:-12px;right:-12px;height:76px;margin-top:-38px;pointer-events:none;background:radial-gradient(50% 50% at 50% 50%,rgba(255,80,30,.2),transparent 70%);animation:bulb 4.3s infinite}
+.dial .needle{left:4px;right:4px;background:linear-gradient(90deg,#c22a10,#ff5a2a 20%,#ff7a4a 50%,#ff5a2a 80%,#c22a10);box-shadow:0 0 4px #ff4a1a,0 0 10px #ff4a1a,0 0 22px rgba(255,74,26,.55),0 0 40px rgba(255,60,20,.25);opacity:var(--b3,1)}
+.dial .spill{position:absolute;left:-12px;right:-12px;height:76px;margin-top:-38px;pointer-events:none;background:radial-gradient(50% 50% at 50% 50%,rgba(255,80,30,.2),transparent 70%);opacity:var(--b3,1)}
 .dial .spill.snap{transition:top .4s cubic-bezier(.3,1.4,.5,1)}
 .dial .spine{position:absolute;left:58px;top:0;bottom:0;width:1px;background:#8a4a14}
-.dial .back{position:absolute;inset:0;pointer-events:none;background:radial-gradient(90% 55% at 40% 55%,rgba(255,140,40,.08),transparent 70%);animation:bulb 5.7s infinite}
+.dial .back{position:absolute;inset:0;pointer-events:none;background:radial-gradient(90% 55% at 40% 55%,rgba(255,140,40,.08),transparent 70%);}
 
-.dial .sc>.needle,.dial .sc>.spill{animation:bulb 4.3s infinite}
+.dial .sc>.needle,.dial .sc>.spill{opacity:var(--b3,1)}
 
-canvas.leds{position:absolute;left:0;top:0;width:480px;height:264px;pointer-events:none;animation:bulb 6.3s infinite}
+canvas.leds{position:absolute;left:0;top:0;width:480px;height:264px;pointer-events:none;}
 :host{all:initial}
 button{font-family:inherit;-webkit-tap-highlight-color:transparent;outline:none}
 
@@ -1857,17 +1857,20 @@ button{font-family:inherit;-webkit-tap-highlight-color:transparent;outline:none}
   background:radial-gradient(closest-side at 50% 58%,rgba(255,150,60,.17),rgba(255,120,30,.075) 52%,rgba(255,110,20,.025) 78%,transparent)}
 .k1.solo .lgl::before{top:50%;margin-top:-50px}
 /* cada luz en su propia capa: el parpadeo solo cambia la opacidad de la capa, sin volver a pintar halos ni filtros */
-.k1 .lgl{animation:bulbO 4.7s infinite;z-index:6}.krow>*:nth-child(2n) .lgl{animation-duration:5.7s}.krow>*:nth-child(3n) .lgl{animation-duration:6.3s}
+.k1 .lgl{;z-index:6}
 .k1.pp .lgl::before{background:radial-gradient(closest-side at 50% 58%,rgba(255,90,50,.18),rgba(255,60,30,.08) 52%,rgba(255,50,20,.025) 78%,transparent)}
 .lgf{position:relative;filter:drop-shadow(0 -1px 0 rgba(18,5,0,.6)) drop-shadow(0 1.5px 1.5px rgba(255,170,80,.5)) drop-shadow(0 4px 7px rgba(255,125,30,.38)) drop-shadow(0 9px 16px rgba(255,110,20,.16))}
 .k1.pp .lgf{filter:drop-shadow(0 -1px 0 rgba(18,3,0,.6)) drop-shadow(0 1.5px 1.5px rgba(255,120,80,.5)) drop-shadow(0 4px 7px rgba(255,70,35,.38)) drop-shadow(0 9px 16px rgba(255,50,20,.16))}
 .k1.dn .lgf,.k1:active .lgf,.k1.lit .lgf{filter:drop-shadow(0 -1px 0 rgba(18,5,0,.5)) drop-shadow(0 1.5px 1.5px rgba(255,180,90,.62)) drop-shadow(0 4px 8px rgba(255,130,35,.5)) drop-shadow(0 10px 18px rgba(255,110,20,.24))}
 .k1 .mtx{background:radial-gradient(rgba(90,30,0,.15) .5px,transparent .8px) 0 0/2px 3px,radial-gradient(circle 60px at 50% 30%,#fff6e2 0%,#ffd896 18%,#ffa944 44%,#ec7614 70%,#a8420a 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
-  filter:drop-shadow(0 -1px 0 rgba(18,5,0,.6)) drop-shadow(0 1.5px 1.5px rgba(255,170,80,.5)) drop-shadow(0 4px 7px rgba(255,125,30,.38)) drop-shadow(0 9px 16px rgba(255,110,20,.16));animation:bulb 4.7s infinite}
+  filter:drop-shadow(0 -1px 0 rgba(18,5,0,.6)) drop-shadow(0 1.5px 1.5px rgba(255,170,80,.5)) drop-shadow(0 4px 7px rgba(255,125,30,.38)) drop-shadow(0 9px 16px rgba(255,110,20,.16));}
 
 /* ===== ahorro: fuera lo que casi no se ve y obliga a la gráfica a recomponer la pantalla sin parar ===== */
 .ttl.still>div{animation:none}
-.k1 .lgl,.k1 .mtx,.info,.lay,canvas.leds,.dial .back,.dial .sc{animation:none!important}
+
+
+/* Esta tablet compone la pantalla por software: cualquier animación continua la tumba (medido: 2 imágenes/s). Nada se mueve solo; los parpadeos son guiños sueltos. */
+.scanw{display:none!important}
 </style><script type="text/x-tpl"><div style="width: 1024px; height: 600px; position: relative; overflow: hidden; background-color: #0e0f11; background-image: radial-gradient(rgba(255,255,255,.028) .8px, transparent 1.1px), linear-gradient(#131416, #0a0b0c); background-size: 3px 3px, 100% 100%; font-family: 'Barlow Condensed', sans-serif; color: #dcdad3">
 <div class="hous" style="left: 18px; right: 18px; top: 12px; height: 322px"></div>
 
@@ -2326,7 +2329,7 @@ class Component extends DCLogic {
     const exp = st.ph === 'in' || st.ph === 'scene' || (st.ph === 'out' && st.pf < 5);
     const sg = this._sg = this.stage();
     const N = exp ? 40 : 74, cur = Math.round(p * (N - 1));
-    const comet = Array.from({ length: N }, (_, k) => { const d = cur - k; let c = '#2a1607', z = 6, g = ''; if (d === 0) { c = '#ffd29a'; z = 11; g = '; box-shadow: 0 0 3px #ffb35c, 0 0 10px #ff8a1f, 0 0 22px rgba(255,138,31,.6), 0 0 40px rgba(255,120,20,.25); animation: bulb 4.3s infinite'; } else if (d > 0 && d < 7) { c = ['#ffb35c', '#ff9a3c', '#ff8a1f', '#e0741a', '#c05f16', '#a05012'][d - 1]; z = 8 - Math.min(2, d >> 1); } else if (d > 0) c = k % 11 === 4 ? '#4e250b' : k % 7 === 2 ? '#5e2c0d' : '#6a320e'; else if (k % 13 === 6) c = '#211205'; return 'flex: none; width: ' + z + 'px; height: ' + z + 'px; border-radius: 50%; background: ' + c + g; });
+    const comet = Array.from({ length: N }, (_, k) => { const d = cur - k; let c = '#2a1607', z = 6, g = ''; if (d === 0) { c = '#ffd29a'; z = 11; g = '; box-shadow: 0 0 3px #ffb35c, 0 0 10px #ff8a1f, 0 0 22px rgba(255,138,31,.6), 0 0 40px rgba(255,120,20,.25); opacity: var(--b3,1)'; } else if (d > 0 && d < 7) { c = ['#ffb35c', '#ff9a3c', '#ff8a1f', '#e0741a', '#c05f16', '#a05012'][d - 1]; z = 8 - Math.min(2, d >> 1); } else if (d > 0) c = k % 11 === 4 ? '#4e250b' : k % 7 === 2 ? '#5e2c0d' : '#6a320e'; else if (k % 13 === 6) c = '#211205'; return 'flex: none; width: ' + z + 'px; height: ' + z + 'px; border-radius: 50%; background: ' + c + g; });
     const noop = () => {};
     const testigos = [
       { lb: 'ALEAT', on: st.mode === 'shuf', d: 'M3 7h4l10 10h4M3 17h4l3-3M14 10l3-3h4M18 4l3 3-3 3M18 14l3 3-3 3' },
@@ -2374,8 +2377,10 @@ class Component extends DCLogic {
     const nums = [20, 30, 40, 50, 60].map(v => ({ v, style: 'position: absolute; left: 4px; width: 32px; text-align: right; top: ' + (yOf(v) - 9).toFixed(1) + 'px; font-family: Doto, monospace; font-weight: 900; font-size: 15px; color: #ffb35c; text-shadow: 0 0 6px rgba(255,140,40,.6)' }));
     const nr = this.near(st.freq), tuned = !st.drag || nr.noise === 0;
     const stations = S.map((x, k) => { const on = k === st.stn && !st.drag || (st.drag && k === nr.k && nr.noise === 0); return { n: x.n, dot: 'position: absolute; left: 62px; top: ' + (yOf(x.f) - 3).toFixed(1) + 'px; width: 6px; height: 6px; border-radius: 50%; background: ' + (on ? '#ffc06a; box-shadow: 0 0 8px #ff8a1f' : '#6a320e'), lab: 'position: absolute; left: 72px; right: 4px; top: ' + (yOf(x.f) - 7).toFixed(1) + 'px; font-family: Doto, monospace; font-weight: 900; font-size: 10px; white-space: nowrap; color: #ff9a3c; opacity: ' + (on ? '1; text-shadow: 0 0 6px rgba(255,140,40,.8)' : '.42') }; });
-    const ttlTxt = st.drag && nr.noise > 0 ? 'Sintonizando' : String(s.t || ''), ttlMove = ttlTxt.length * (exp ? 19.5 : 27.5) > (exp ? 250 : 462);
-    const sub = s.a + ' · ' + s.al, subMove = sub.length * (exp ? 8 : 9.6) > (exp ? 250 : 465);
+    const pgs = (txt, max) => { txt = String(txt || ''); if (txt.length <= max) return [txt]; const out = []; let cur = ''; for (const w of txt.split(/\s+/)) { if (cur && (cur + ' ' + w).length > max) { out.push(cur); cur = w; } else cur = cur ? cur + ' ' + w : w; while (cur.length > max) { out.push(cur.slice(0, max)); cur = cur.slice(max); } } if (cur) out.push(cur); return out; };
+    const pgI = Math.floor(Date.now() / 3200), pick = L => L[pgI % L.length];
+    const ttlTxt = st.drag && nr.noise > 0 ? 'Sintonizando' : pick(pgs(s.t, exp ? 12 : 16)), ttlMove = false;
+    const sub = pick(pgs(s.a + ' · ' + s.al, exp ? 28 : 46)), subMove = false;
     const nx = L[(st.i + 1) % L.length];
     return {
       base: sg.base, cov: sg.cov, over: sg.over, scanSt: st.ph === 'cover' ? '' : 'display: none', scanK: 's' + (st.scanN || 0), scanP: st.scanP || 'display: none',
@@ -2691,7 +2696,7 @@ class CarUI extends Component{
   syncStation(init){const k=this.ST.findIndex(s=>s.key===P.src);if(k>=0&&(k!==this.state.stn)&&!this.state.drag){LS.set('carStn',this.ST[k].key);if(init)Object.assign(this.state,{stn:k,freq:this.ST[k].f});else this.setState({stn:k,freq:this.ST[k].f});}}
   cur(){const n=nowInfo(),t=n.t;return{t:n.title,a:(t&&t.a)||'',al:(t&&t.al)||'',d:Math.max(1,n.dur||1),ch:this.anim&&this.anim.on?this.anim.kind:null,id:n.id,tr:t,n};}
   songs(){return[this._cur||(this._cur=this.cur())];}
-  componentDidMount(){this.scanNext(2500);this.fv=setInterval(()=>this.tick(),170);}
+  componentDidMount(){this.fv=setInterval(()=>this.tick(),170);}
   componentWillUnmount(){super.componentWillUnmount();try{if(this.rec)this.rec.abort();}catch{}}
   /* ----- portada real convertida a puntos ----- */
   covLv(x,y){return this.lv?this.lv[y*44+x]:super.covLv(x,y);}
@@ -2707,7 +2712,8 @@ class CarUI extends Component{
         this.setCov(lv);}catch(e){this.setCov(null);}};
       im.onerror=()=>{if(this.covId===cid)this.setCov(null);};im.src=u;}).catch(()=>{});}
   /* ----- latido principal: copia el estado real y mueve las animaciones ----- */
-  tick(){this.fl=(this.fl||0)+1;const c=this._cur=this.cur(),st=this.state,n=c.n,A=this.anim;
+  wink(){const st=this._root;if(!st)return;if(this.wk!=null){st.style.setProperty('--b'+this.wk,'1');this.wk=null;}else if(Math.random()<.035){this.wk=Math.floor(Math.random()*4);st.style.setProperty('--b'+this.wk,(.72+Math.random()*.16).toFixed(2));}}
+  tick(){this.fl=(this.fl||0)+1;this.wink();const c=this._cur=this.cur(),st=this.state,n=c.n,A=this.anim;
     if(this.stSig!==S.tracks.size+':'+S.artists.length+':'+(likedIds().length?1:0))this.buildStations();
     this.syncStation();
     if(this.applied==='radio'&&P.current&&P.src!=='radio'){prefs.radio=false;P.radioSeed=null;this.radioLb='';this.applied='shuf';this.prevMode='shuf';LS.set('carMode','shuf');if(st.mode==='radio')this.setState({mode:'shuf'});} // han puesto otra cosa (álbum, DJ…): la radio se apaga
@@ -2730,14 +2736,14 @@ class CarUI extends Component{
     const o=Object.assign(up,{ph,pf,tr,lastTr,F0,sc});
     /* La pantalla entera solo se vuelve a montar cuando cambia algo que se ve en ella (el segundo, la barra, un testigo, la canción…).
        El resto de latidos solo redibujan la matriz de LEDs (personajes y centelleo), que es baratísimo. Así la tablet tiene el procesador libre para los dedos. */
-    const d=c.d,p=o.t/d,dom=[c.id,c.t,c.a,Math.round(d),Math.floor(o.t),Math.floor(Math.max(0,d-o.t)),Math.round(p*73),Math.round(p*39),ph,ph==='out'&&pf<5,o.playing,o.like,o.fund,o.mute,o.mode||st.mode,tr,new Date().getMinutes(),P.src,this.radioLb||''].join('|');
-    if(dom===this._dom&&!this._q){Object.assign(this.state,o);if(n.playing||!(this.fl&1))this.light();return;}
+    const d=c.d,p=o.t/d,dom=[c.id,c.t,c.a,Math.round(d),Math.floor(o.t),Math.floor(Math.max(0,d-o.t)),Math.round(p*73),Math.round(p*39),ph,ph==='out'&&pf<5,o.playing,o.like,o.fund,o.mute,o.mode||st.mode,tr,new Date().getMinutes(),P.src,this.radioLb||'',Math.floor(Date.now()/3200)].join('|');
+    if(dom===this._dom&&!this._q){Object.assign(this.state,o);if(ph!=='cover'||!(this.fl&7))this.light();return;}
     this._dom=dom;this.setState(o);}
   light(){try{this._sg=this.stage();this.afterRender();}catch(e){}}
   stage(){const k=this.anim.kind;if(k&&k!=='fito'){const keep=this.story;this.story=this.show(k);try{return super.stage();}finally{this.story=keep;}}return super.stage();}
   shadow(cells){const fl=this.fl||0,out=[];
     for(const [x,y,l] of cells)if(l>0&&x>=0&&x<80&&y>=0&&y<44){const h=((x*73856093)^(y*19349663)^0x5bd1e995)>>>0;let q=3+(h>>>7)%3;if(h%19===0)q=2;if(h%211===0)continue;
-      if(h%67===0){const t=((fl>>1)+(h>>>9))%29;if(t===0)continue;if(t<4)q=1;}out.push(x,y,l*6+q);}
+      if(h%67===0){const t=((fl>>3)+(h>>>9))%29;if(t===0)continue;if(t<4)q=1;}out.push(x,y,l*6+q);}
     return out;}
   /* Matriz de LEDs: cada celda es un sello ya dibujado (punto + resplandor) y solo se repintan las celdas que cambian de un latido a otro.
      Con un personaje moviéndose son unos cientos de sellos; con la portada quieta, un puñado. Antes eran 7.000 círculos por latido. */
@@ -2817,7 +2823,7 @@ class CarUI extends Component{
     if(!navigator.onLine){this.say('SIN CONEXIÓN');return;}
     this.djR={said:'',ans:'',songs:[]};this.djIds=null;this.djLvl=0;this.djWas=nowInfo().playing;if(this.djWas)P.pause();
     this.setState({djStep:'listen',djT0:Date.now()+FL.total,djAng:-48});this.openScr('dj');this.relay(FL.total);
-    clearInterval(this.djI);this.djI=setInterval(()=>this.djTick(),90);
+    clearInterval(this.djI);this.djI=setInterval(()=>this.djTick(),170);
     setTimeout(()=>{if(this.state.scr!=='dj'||this.state.djStep!=='listen')return;
       try{const r=this.rec=new SR();r.lang='es-ES';r.interimResults=true;r.continuous=false;r.maxAlternatives=1;
         r.onresult=ev=>{let s='';for(let i=0;i<ev.results.length;i++)s+=ev.results[i][0].transcript;this.djR.said=s.trim();this.djLvl=1;};
