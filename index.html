@@ -1195,7 +1195,7 @@ function openEq(){const g=AE.gains();
 /* modo coche */
 const carBtn=(act,icon,label)=>h('button',{class:'pbtn','data-act':act,'aria-label':label},ic(icon));
 function goFull(){if(typeof SIM!=='undefined'&&SIM)return;try{const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen({navigationUI:'hide'}).catch(()=>{});}catch{}}
-function carOn(){document.body.classList.add('carmode');goFull();document.addEventListener('pointerdown',goFull,{once:true,capture:true});closeNp();closeLayer();$('#car').hidden=false;$('#app').setAttribute('aria-hidden','true');renderCar();wake();
+function carOn(){document.body.classList.add('carmode');goFull();if(!window.__gf){window.__gf=1;['pointerup','click','touchend','keydown'].forEach(e=>document.addEventListener(e,()=>{if(document.body.classList.contains('carmode'))goFull();},{capture:true,passive:true}));}closeNp();closeLayer();$('#car').hidden=false;$('#app').setAttribute('aria-hidden','true');renderCar();wake();
   try{history.replaceState(null,'','#coche');}catch{}}
 function carOff(){document.body.classList.remove('carmode');if(typeof CAR!=='undefined'&&CAR){try{CAR.unmount();}catch(e){}CAR=null;}$('#car').hidden=true;$('#car').textContent='';$('#app').removeAttribute('aria-hidden');
   try{if(wl)wl.release();}catch{}wl=null;try{history.replaceState(null,'','#'+S.view);}catch{}renderPlayer(true);}
@@ -1864,6 +1864,10 @@ button{font-family:inherit;-webkit-tap-highlight-color:transparent;outline:none}
 .k1.dn .lgf,.k1:active .lgf,.k1.lit .lgf{filter:drop-shadow(0 -1px 0 rgba(18,5,0,.5)) drop-shadow(0 1.5px 1.5px rgba(255,180,90,.62)) drop-shadow(0 4px 8px rgba(255,130,35,.5)) drop-shadow(0 10px 18px rgba(255,110,20,.24))}
 .k1 .mtx{background:radial-gradient(rgba(90,30,0,.15) .5px,transparent .8px) 0 0/2px 3px,radial-gradient(circle 60px at 50% 30%,#fff6e2 0%,#ffd896 18%,#ffa944 44%,#ec7614 70%,#a8420a 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
   filter:drop-shadow(0 -1px 0 rgba(18,5,0,.6)) drop-shadow(0 1.5px 1.5px rgba(255,170,80,.5)) drop-shadow(0 4px 7px rgba(255,125,30,.38)) drop-shadow(0 9px 16px rgba(255,110,20,.16));animation:bulb 4.7s infinite}
+
+/* ===== ahorro: fuera lo que casi no se ve y obliga a la gráfica a recomponer la pantalla sin parar ===== */
+.ttl.still>div{animation:none}
+.k1 .lgl,.k1 .mtx,.info,.lay,canvas.leds,.dial .back,.dial .sc{animation:none!important}
 </style><script type="text/x-tpl"><div style="width: 1024px; height: 600px; position: relative; overflow: hidden; background-color: #0e0f11; background-image: radial-gradient(rgba(255,255,255,.028) .8px, transparent 1.1px), linear-gradient(#131416, #0a0b0c); background-size: 3px 3px, 100% 100%; font-family: 'Barlow Condensed', sans-serif; color: #dcdad3">
 <div class="hous" style="left: 18px; right: 18px; top: 12px; height: 322px"></div>
 
@@ -1874,7 +1878,7 @@ button{font-family:inherit;-webkit-tap-highlight-color:transparent;outline:none}
 <div class="hrow"><span style="opacity: .75">{{stationLb}}</span><span>{{temp}}&#160;&#160;&#160;{{clock}}</span></div>
 <div class="trow"><sc-for list="{{testigos}}" as="w" hint-placeholder-count="6"><button class="{{w.cls}}" onClick="{{w.fn}}" aria-label="{{w.lb}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{w.d}}"></path></svg><span>{{w.lb}}</span></button></sc-for></div>
 <div style="display: flex; flex-direction: column; gap: 6px">
-<div class="mq ttl"><div>{{title}}&#160;&#160;·&#160;&#160;{{title}}&#160;&#160;·&#160;&#160;</div></div>
+<div class="{{ttlCls}}"><div>{{title}}{{ttlTail}}</div></div>
 <div class="{{subCls}}"><div>{{sub}}{{subTail}}</div></div>
 </div>
 <div style="display: flex; align-items: baseline; justify-content: space-between"><span class="big">{{elapsed}}</span><span class="rem">-{{left}}</span></div>
@@ -2370,6 +2374,7 @@ class Component extends DCLogic {
     const nums = [20, 30, 40, 50, 60].map(v => ({ v, style: 'position: absolute; left: 4px; width: 32px; text-align: right; top: ' + (yOf(v) - 9).toFixed(1) + 'px; font-family: Doto, monospace; font-weight: 900; font-size: 15px; color: #ffb35c; text-shadow: 0 0 6px rgba(255,140,40,.6)' }));
     const nr = this.near(st.freq), tuned = !st.drag || nr.noise === 0;
     const stations = S.map((x, k) => { const on = k === st.stn && !st.drag || (st.drag && k === nr.k && nr.noise === 0); return { n: x.n, dot: 'position: absolute; left: 62px; top: ' + (yOf(x.f) - 3).toFixed(1) + 'px; width: 6px; height: 6px; border-radius: 50%; background: ' + (on ? '#ffc06a; box-shadow: 0 0 8px #ff8a1f' : '#6a320e'), lab: 'position: absolute; left: 72px; right: 4px; top: ' + (yOf(x.f) - 7).toFixed(1) + 'px; font-family: Doto, monospace; font-weight: 900; font-size: 10px; white-space: nowrap; color: #ff9a3c; opacity: ' + (on ? '1; text-shadow: 0 0 6px rgba(255,140,40,.8)' : '.42') }; });
+    const ttlTxt = st.drag && nr.noise > 0 ? 'Sintonizando' : String(s.t || ''), ttlMove = ttlTxt.length * (exp ? 19.5 : 27.5) > (exp ? 250 : 462);
     const sub = s.a + ' · ' + s.al, subMove = sub.length * (exp ? 8 : 9.6) > (exp ? 250 : 465);
     const nx = L[(st.i + 1) % L.length];
     return {
@@ -2392,7 +2397,7 @@ class Component extends DCLogic {
       stationLb: st.mode === 'radio' && this.radioLb ? 'RADIO · ' + String(this.radioLb).toUpperCase().slice(0, 26) : (this.srcLabel && this.srcLabel()) ? String(this.srcLabel()).toUpperCase().slice(0, 30) : S[st.stn].f + ' Hz · ' + S[st.stn].n, temp: this.dayStr(), clock: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'),
       dialFoot: tuned ? S[st.drag ? nr.k : st.stn].f + ' Hz · ' + S[st.drag ? nr.k : st.stn].n : st.freq.toFixed(1) + ' Hz · · ·',
       noiseOp: st.drag ? (nr.noise * .55).toFixed(2) : '0', cvW: CVW, cvH: CVW * .55, snowD: st.drag ? 'block' : 'none',
-      title: st.drag && nr.noise > 0 ? 'Sintonizando' : s.t, sub, subTail: subMove ? '  ·  ' + sub + '  ·  ' : '', subCls: 'mq sub' + (subMove ? ' mv' : ''),
+      title: ttlTxt, ttlCls: 'mq ttl' + (ttlMove ? '' : ' still'), ttlTail: ttlMove ? '\u00a0\u00a0·\u00a0\u00a0' + ttlTxt + '\u00a0\u00a0·\u00a0\u00a0' : '', sub, subTail: subMove ? '  ·  ' + sub + '  ·  ' : '', subCls: 'mq sub' + (subMove ? ' mv' : ''),
       elapsed: mm(t), left: mm(Math.max(0, s.d - t)), next: nx.t + ' · ' + nx.a,
       hasMsg: !!st.msg, msg: st.msg || '', msgKey: 'm' + st.mk,
       dDown: e => { try { this.rect = e.currentTarget.getBoundingClientRect(); e.currentTarget.setPointerCapture(e.pointerId); } catch (x) {} this.startNoise(); const f = this.freqAt(e.clientY); this.setNoise(this.near(f).noise); this.setState({ drag: true, freq: f }); },
