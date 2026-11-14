@@ -751,7 +751,8 @@ function updateMS(){if(!('mediaSession' in navigator))return;const t=P.current;
   try{navigator.mediaSession.metadata=t?new MediaMetadata({title:t.t||'Sin título',artist:t.a||'',album:t.al||'',
     artwork:t.c&&COV.mem.has(t.c)?[{src:COV.mem.get(t.c),sizes:'256x256',type:'image/jpeg'}]:[]}):null;}catch{}}
 function updateMSPos(){try{const d=AE.el;if('mediaSession' in navigator&&isFinite(d.duration)&&d.duration>0)navigator.mediaSession.setPositionState({duration:d.duration,position:Math.min(d.currentTime,d.duration),playbackRate:1});}catch{}}
-(()=>{const ms=navigator.mediaSession;if(!ms)return;const set=(a,f)=>{try{ms.setActionHandler(a,f);}catch{}};
+const EVLOG=[];function logEv(x){const d=new Date();EVLOG.push(String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0')+' '+x);if(EVLOG.length>6)EVLOG.shift();}
+(()=>{const ms=navigator.mediaSession;if(!ms)return;const set=(a,f)=>{try{ms.setActionHandler(a,e=>{logEv('sesión:'+a);return f(e);});}catch{}};
   const carO=()=>{try{return CAR;}catch{return null;}};
   /* el coche: siguiente/anterior del volante hacen exactamente lo mismo que las teclas de la pantalla */
   const inCar=()=>document.body.classList.contains('carmode')&&carO();
@@ -761,9 +762,9 @@ function updateMSPos(){try{const d=AE.el;if('mediaSession' in navigator&&isFinit
   set('nexttrack',()=>skip(1));set('previoustrack',()=>skip(-1));set('seekto',e=>P.seek(e.seekTime));
   set('seekforward',()=>skip(1));set('seekbackward',()=>skip(-1));
   /* pausas que no hemos pedido nosotros: otra app (la radio de la tablet, el mute…) se ha quedado el sonido */
-  try{AE.decks.forEach(d=>d.addEventListener('pause',()=>{const src=d.currentSrc;setTimeout(()=>{if(d!==AE.el||!d.paused||d.ended||d.currentSrc!==src||performance.now()-(P.selfPause||0)<1200)return;tell('PAUSA DESDE FUERA · OTRA APP O MANDO');},450);}));}catch{}
+  try{AE.decks.forEach(d=>d.addEventListener('pause',()=>{const src=d.currentSrc;setTimeout(()=>{if(d!==AE.el||!d.paused||d.ended||d.currentSrc!==src||performance.now()-(P.selfPause||0)<1200)return;logEv('pausa-externa');tell('PAUSA DESDE FUERA · OTRA APP O MANDO');},450);}));}catch{}
   /* teclas del volante / de la unidad: por si llegan como teclas en vez de como acciones multimedia */
-  addEventListener('keydown',e=>{const k=e.key,car=document.body.classList.contains('carmode'),ae=/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||''));if(ae)return;
+  addEventListener('keydown',e=>{logEv('tecla:'+e.key+'/'+(e.code||e.keyCode));const k=e.key,car=document.body.classList.contains('carmode'),ae=/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||''));if(ae)return;
     if(k==='AudioVolumeMute'||e.keyCode===173||e.keyCode===164){e.preventDefault();if(carO())try{CAR.mute();}catch{}else{const m=!AE.el.muted;AE.decks.forEach(d=>{d.muted=m;});toast(m?'Silencio':'Sonido');}return;}
     let a=null;if(k==='MediaTrackNext'||k==='MediaFastForward'||e.keyCode===176)a='n';else if(k==='MediaTrackPrevious'||k==='MediaRewind'||e.keyCode===177)a='p';else if(k==='MediaPlay')a='r';else if(k==='MediaPause'||k==='MediaStop')a='s';else if(k==='MediaPlayPause'||e.keyCode===179)a='t';
     if(a){e.preventDefault();if(a==='n'||a==='p'){skip(a==='n'?1:-1);return;}else if(a==='r')P.resume();else if(a==='s')P.pause();else P.toggle();if(car&&carO())try{CAR.say(({n:'SIGUIENTE',p:'ANTERIOR',r:'PLAY',s:'PAUSA',t:'PLAY / PAUSA'})[a]+' · MANDO');}catch{}return;}
@@ -1960,7 +1961,8 @@ const CARRT=(()=>{
   class Logic{constructor(p){this.props=p||{};this.state={};}
     setState(o){if(typeof o==='function')o=o(this.state);this.state=Object.assign({},this.state,o);this._sched();}
     _sched(){if(this._q||!this._root)return;this._q=true;requestAnimationFrame(()=>{this._q=false;if(this._root)this._render();});}
-    _render(){let v;try{v=this.renderVals();}catch(e){console.warn('coche',e);return;}
+    _render(){const _t0=performance.now();try{this._render2();}finally{const P=window.__pf||(window.__pf={n:0,ms:0,mx:0}),d=performance.now()-_t0;P.n++;P.ms+=d;if(d>P.mx)P.mx=d;}}
+    _render2(){let v;try{v=this.renderVals();}catch(e){console.warn('coche',e);return;}
       const out=[],H=[];run(this._tpl,v,out,H);const html=out.join('');this._H=H;if(html===this._html){if(this.afterRender)try{this.afterRender();}catch(e){}return;}this._html=html;const t=document.createElement('template');t.innerHTML=html;
       morph(this._root,t.content);
       for(const el of this._root.querySelectorAll(SEL)){if(el._b)continue;el._b=true;
@@ -2757,7 +2759,7 @@ class CarUI extends Component{
     const d=c.d,p=o.t/d,dom=[c.id,c.t,c.a,Math.round(d),Math.floor(o.t),Math.floor(Math.max(0,d-o.t)),Math.round(p*73),Math.round(p*39),ph,ph==='out'&&pf<5,o.playing,o.like,o.fund,o.mute,o.mode||st.mode,tr,new Date().getMinutes(),P.src,this.radioLb||'',Math.floor(Date.now()/3200)].join('|');
     if(dom===this._dom&&!this._q){Object.assign(this.state,o);if(ph!=='cover'||!(this.fl&7))this.light();return;}
     this._dom=dom;this.setState(o);}
-  light(){try{this._sg=this.stage();this.afterRender();}catch(e){}}
+  light(){const t0=performance.now();try{this._sg=this.stage();this.afterRender();}catch(e){}const L=window.__pl||(window.__pl={n:0,ms:0,mx:0}),d=performance.now()-t0;L.n++;L.ms+=d;if(d>L.mx)L.mx=d;}
   stage(){const k=this.anim.kind;if(k&&k!=='fito'){const keep=this.story;this.story=this.show(k);try{return super.stage();}finally{this.story=keep;}}return super.stage();}
   shadow(cells){const fl=this.fl||0,out=[];
     for(const [x,y,l] of cells)if(l>0&&x>=0&&x<80&&y>=0&&y<44){const h=((x*73856093)^(y*19349663)^0x5bd1e995)>>>0;let q=3+(h>>>7)%3;if(h%19===0)q=2;if(h%211===0)continue;
@@ -2915,10 +2917,22 @@ html.sim .car{right:auto!important;bottom:auto!important;padding:0!important;bor
   const ch=h('div',{id:'simChrome'},h('div',{class:'sy'},'◁','⌂','▢',h('span',{style:'margin-left:auto'},'17:51')),h('div',{class:'tb'},'● La Guantera'),h('div',{class:'ur'},h('span',null,'jaimebeltran-at.github.io/la-guantera/#coche')));
   document.body.append(bar,keys,ch);addEventListener('resize',simFit);if(!document.body.classList.contains('carmode'))carOn();simFit();}
 /* medidor de fluidez (abre con ?medir): imágenes por segundo, peor parón y tiempo bloqueado, para probar en la tablet de verdad */
-function medir(){const el=h('div',{style:'position:fixed;left:6px;top:6px;z-index:99;background:rgba(0,0,0,.78);color:#7CFC9A;font:600 15px/1.25 monospace;padding:6px 9px;border-radius:6px;pointer-events:none;white-space:pre'},'midiendo…');document.body.append(el);
-  let n=0,worst=0,last=performance.now(),t0=last,lt=0,hist=[];try{new PerformanceObserver(li=>li.getEntries().forEach(e=>lt+=e.duration)).observe({type:'longtask'});}catch{}
+const VER='v20';
+function medir(){const el=h('div',{style:'position:fixed;left:4px;top:4px;z-index:99;background:rgba(0,0,0,.86);color:#7CFC9A;font:600 13px/1.3 monospace;padding:5px 8px;border-radius:6px;pointer-events:none;white-space:pre;max-width:98vw;overflow:hidden'},'midiendo…');document.body.append(el);
+  let gpu='?';try{const c=document.createElement('canvas'),g=c.getContext('webgl')||c.getContext('experimental-webgl');if(!g)gpu='SIN WebGL';else{const x=g.getExtension('WEBGL_debug_renderer_info');gpu=String(x?g.getParameter(x.UNMASKED_RENDERER_WEBGL):g.getParameter(g.RENDERER)).slice(0,60);}}catch(e){gpu='error';}
+  const chr=(navigator.userAgent.match(/Chrome\/([\d.]+)/)||navigator.userAgent.match(/Firefox\/([\d.]+)/)||[,'?'])[1],and=(navigator.userAgent.match(/Android ([\d.]+)/)||[,'?'])[1];
+  let n=0,worst=0,last=performance.now(),t0=last,lt=0,ltN=0,hist=[];try{new PerformanceObserver(li=>li.getEntries().forEach(e=>{lt+=e.duration;ltN++;})).observe({type:'longtask'});}catch{lt=-1;}
   const f=t=>{const d=t-last;last=t;n++;if(d>worst)worst=d;if(t-t0>=2000){const fps=Math.round(n*1000/(t-t0));hist.push(fps);if(hist.length>30)hist.shift();
-      el.textContent=fps+' img/s   peor parón '+Math.round(worst)+' ms\nbloqueado '+Math.round(lt/(t-t0)*100)+'%   media '+Math.round(hist.reduce((a,b)=>a+b,0)/hist.length)+' img/s';el.style.color=fps>=45?'#7CFC9A':fps>=28?'#ffd166':'#ff6b6b';n=0;worst=0;lt=0;t0=t;}
+      const R=window.__pf||{n:0,ms:0,mx:0},L=window.__pl||{n:0,ms:0,mx:0},sec=(t-t0)/1000;let car=null;try{car=CAR;}catch{}
+      const tg=(()=>{try{return Object.keys(ART).length;}catch{return 0;}})();
+      el.textContent=VER+'  '+fps+' img/s  peor '+Math.round(worst)+' ms  media '+Math.round(hist.reduce((a,b)=>a+b,0)/hist.length)+'  bloqueado '+(lt<0?'n/d':Math.round(lt/(t-t0)*100)+'% ('+ltN+')')+
+        '\npantalla '+innerWidth+'x'+innerHeight+' dpr'+(devicePixelRatio||1)+'  Chrome '+chr+'  Android '+and+'  nucleos '+(navigator.hardwareConcurrency||'?')+'  mem '+(navigator.deviceMemory||'?')+'G'+(document.fullscreenElement?'  COMPLETA':'  con barras')+
+        '\nGPU '+gpu+
+        '\nmontajes '+(R.n/sec).toFixed(1)+'/s '+(R.n?Math.round(R.ms/R.n):0)+' ms (max '+Math.round(R.mx)+')   LEDs '+(L.n/sec).toFixed(1)+'/s '+(L.n?(L.ms/L.n).toFixed(1):0)+' ms (max '+Math.round(L.mx)+')'+
+        '\nmusica '+S.tracks.size+' canc  '+S.artists.length+' art  clasif '+tg+'  clave '+((S.cfg.apiKey||'').trim()?'si':'NO')+'  red '+(navigator.onLine?'si':'NO')+'  google '+(AUTH.ok()?'si':'NO')+
+        '\nsuena '+(P.src||'-')+'  modo '+(car?car.applied:'-')+'  cola '+(P.qi+1)+'/'+P.q.length+'  '+(AE.el.paused?'PAUSA':'PLAY')+(AE.el.muted?' MUTE':'')+
+        '\nmandos: '+(EVLOG.slice(-4).join(' | ')||'(pulsa flechas/mute del volante)');
+      el.style.color=fps>=45?'#7CFC9A':fps>=25?'#ffd166':'#ff6b6b';window.__pf={n:0,ms:0,mx:0};window.__pl={n:0,ms:0,mx:0};n=0;worst=0;lt=0;ltN=0;t0=t;}
     requestAnimationFrame(f);};requestAnimationFrame(f);}
 const SIMV={chrome:false};
 /* biblioteca de mentira (abre con ?demo): artistas de verdad con pitidos de prueba, para ensayar emisoras, radio y modos sin Drive */
