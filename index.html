@@ -392,6 +392,7 @@ body.carmode>#app,body.carmode>#np{display:none!important}
 
 <section class="np" id="np" hidden aria-label="Ahora suena"></section>
 <section class="car" id="car" hidden aria-label="Modo coche"></section>
+<section class="pcm" id="pc" hidden aria-label="Modo ordenador"></section>
 <div id="layer"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="tip" id="tip" hidden></div>
@@ -810,11 +811,11 @@ const LISTS=new Map();let listTok=0;
 const regList=ids=>{const k='l'+(++listTok);LISTS.set(k,ids);if(LISTS.size>60)LISTS.delete(LISTS.keys().next().value);return k;};
 const keepScroll={};
 
-function go(v){if(!VIEWS.includes(v))v='inicio';closeNp();closeLayer();if(document.body.classList.contains('carmode'))carOff();
+function go(v){if(!VIEWS.includes(v))v='inicio';closeNp();closeLayer();if(typeof PC!=='undefined'&&PC.on)pcOff();if(document.body.classList.contains('carmode'))carOff();
   S.view=v;S.stack=[];try{if(location.hash!=='#'+v)history.replaceState(null,'','#'+v);}catch{}renderNav();renderView(true);$('#main').scrollTop=0;}
 function openDetail(d){S.stack.push(d);closeLayer();if(document.body.classList.contains('carmode'))carOff();closeNp();renderView(true);$('#main').scrollTop=0;}
 function back(){S.stack.pop();renderView(true);}
-addEventListener('hashchange',()=>{const v=location.hash.slice(1);if(v==='coche'){carOn();return;}if(VIEWS.includes(v)&&v!==S.view){S.view=v;S.stack=[];renderNav();renderView(true);}});
+addEventListener('hashchange',()=>{const v=location.hash.slice(1);if(v==='coche'){carOn();return;}if(v==='pc'||v==='ordenador'){pcOn();return;}if(typeof PC!=='undefined'&&PC.on)pcOff();if(VIEWS.includes(v)&&v!==S.view){S.view=v;S.stack=[];renderNav();renderView(true);}});
 
 function renderNav(){const nav=$('#nav');nav.textContent='';
   for(const [v,nm,icn] of NAV)nav.append(h('button',{class:S.view===v&&!S.stack.length?'on':'','data-act':'go','data-v':v},ic(icn),nm));
@@ -1083,7 +1084,7 @@ function renderPlayer(force){const n=nowInfo();if(force)$$('.mq').forEach(m=>del
   $$('[data-k=devbtn]').forEach(b=>b.classList.toggle('on',!!S.ctrl));
   $$('[data-k=src]').forEach(el=>el.textContent=n.remote?'MANDO · '+n.remote.toUpperCase():(P.src&&P.current?collName(P.src).toUpperCase():''));
   updateTime();renderPresets();markCurrent();}
-const updateLikeUI=()=>renderPlayer();
+function updateLikeUI(){renderPlayer();}
 function onTrackChange(){updateMS();renderPlayer();renderDials();saveState();presenceSoon();renderQueueIfOpen();}
 let lastMs=0;
 function updateTime(){const n=nowInfo(),pos=n.pos,dur=n.dur,f=dur?Math.max(0,Math.min(1,pos/dur)):0;
@@ -1196,7 +1197,7 @@ function openEq(){const g=AE.gains();
 /* modo coche */
 const carBtn=(act,icon,label)=>h('button',{class:'pbtn','data-act':act,'aria-label':label},ic(icon));
 function goFull(){if(typeof SIM!=='undefined'&&SIM)return;try{const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen({navigationUI:'hide'}).catch(()=>{});}catch{}}
-function carOn(){document.body.classList.add('carmode');if(!prefs.fx||!(prefs.xf>0)){prefs.fx=true;if(!(prefs.xf>0))prefs.xf=4;try{savePrefs();}catch{}}goFull();if(!window.__gf){window.__gf=1;['pointerup','click','touchend','keydown'].forEach(e=>document.addEventListener(e,()=>{if(document.body.classList.contains('carmode'))goFull();},{capture:true,passive:true}));}closeNp();closeLayer();$('#car').hidden=false;$('#app').setAttribute('aria-hidden','true');renderCar();wake();
+function carOn(){if(typeof PC!=='undefined'&&PC.on)pcOff();document.body.classList.add('carmode');if(!prefs.fx||!(prefs.xf>0)){prefs.fx=true;if(!(prefs.xf>0))prefs.xf=4;try{savePrefs();}catch{}}goFull();if(!window.__gf){window.__gf=1;['pointerup','click','touchend','keydown'].forEach(e=>document.addEventListener(e,()=>{if(document.body.classList.contains('carmode'))goFull();},{capture:true,passive:true}));}closeNp();closeLayer();$('#car').hidden=false;$('#app').setAttribute('aria-hidden','true');renderCar();wake();
   try{history.replaceState(null,'','#coche');}catch{}}
 function carOff(){document.body.classList.remove('carmode');if(typeof CAR!=='undefined'&&CAR){try{CAR.unmount();}catch(e){}CAR=null;}$('#car').hidden=true;$('#car').textContent='';$('#app').removeAttribute('aria-hidden');
   try{if(wl)wl.release();}catch{}wl=null;try{history.replaceState(null,'','#'+S.view);}catch{}renderPlayer(true);}
@@ -1594,7 +1595,7 @@ async function boot(){try{document.documentElement.style.setProperty('--wood-img
   if(!device){device={id:rid(8),kind:guessKind()};device.name=KIND[device.kind].name;LS.set('dev',device);S.firstRun=true;}
   const hv=location.hash.slice(1);if(VIEWS.includes(hv))S.view=hv;
   renderNav();renderView(true);renderPlayer(true);renderDials();renderPresets();requestAnimationFrame(specLoop);
-  if(hv==='coche'||prefs.carStart||(S.firstRun&&device.kind==='car'))carOn();
+  if(hv==='pc'||hv==='ordenador'||(!hv&&LS.get('pcStart',0)&&!prefs.carStart))setTimeout(pcOn,0);else if(hv==='coche'||prefs.carStart||(S.firstRun&&device.kind==='car'))carOn();
   await Promise.all([SY.loadLocal(),LIB.loadLocal()]);
   try{const st=await IDB.get('kv','stats');if(st&&st.ym===ym()&&st.dev===device.id){S.stats=st;S.statsId=statsName();}}catch{}
   DL.init();renderAll();if(AUTH.ok())onAuth();
@@ -2962,6 +2963,335 @@ function simFit(){if(!SIM)return;const k=Math.min(1,(innerWidth-80)/1024,(innerH
   Object.assign(cb.style,{display:SIMV.chrome?'flex':'none',left:x+'px',top:y+'px',width:'1024px',height:'128px',transform:'scale('+k+')'});
   setTimeout(()=>{try{carFit();}catch{}},30);}
 </script>
+<style id="pcCss">
+body.pcmode>#app,body.pcmode>#np{display:none!important}
+.pcm{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;gap:14px;padding:14px;box-sizing:border-box;color:#ff9a3c;
+  background:radial-gradient(rgba(255,255,255,.025) .7px,transparent 1px) 0 0/2px 2px,linear-gradient(180deg,#17181b,#0e0f11);font-family:'Doto',monospace;font-weight:900;user-select:none}
+.pcm[hidden]{display:none}
+.pcm *{box-sizing:border-box}
+.pcm button{font:inherit;color:inherit}
+.pcm ::-webkit-scrollbar{width:10px}.pcm ::-webkit-scrollbar-thumb{background:#3a1c08;border-radius:5px}.pcm ::-webkit-scrollbar-track{background:transparent}
+.pcm{scrollbar-color:#3a1c08 transparent}
+.pc-lcd{border-radius:14px;background:#0a0806;box-shadow:inset 0 0 0 2px #000,inset 0 10px 30px rgba(0,0,0,.9),0 0 0 2px #26282c,0 1px 0 3px rgba(255,255,255,.04)}
+.pc-led{color:#ff9a3c;text-shadow:0 0 6px rgba(255,140,40,.65)}
+.pc-hi{color:#ffb35c;text-shadow:0 0 8px rgba(255,140,40,.7)}
+.pc-dim{color:#6a320e;text-shadow:none}
+.pc-mid{color:#9a5a22;text-shadow:none}
+.pc-lb{font:700 12px 'Barlow Condensed',sans-serif;letter-spacing:.3em;color:#9a6a3c}
+.pc-top{flex:1;min-height:0;display:grid;grid-template-columns:220px minmax(0,1fr) 300px;gap:14px}
+@media (max-width:1150px){.pc-top{grid-template-columns:200px minmax(0,1fr)}.pc-q{display:none!important}}
+@media (max-width:820px){.pc-top{grid-template-columns:minmax(0,1fr)}.pc-nav{display:none!important}}
+.pc-nav{display:flex;flex-direction:column;padding:14px 12px;min-height:0;background:linear-gradient(#0d0a07,#060504)}
+.pc-dial{position:relative;flex:1 1 auto;min-height:220px;margin:12px 0 6px}
+.pc-dial .tk{position:absolute;height:2px;margin-top:-1px}
+.pc-dial .nm{position:absolute;left:0;width:34px;text-align:right;font-size:15px;margin-top:-10px}
+.pc-dial .st{position:absolute;left:58px;right:0;height:28px;margin-top:-14px;display:flex;align-items:center;gap:8px;padding:0;border:0;background:transparent;cursor:pointer;text-align:left;font-size:14px;white-space:nowrap}
+.pc-dial .st i{width:8px;height:8px;flex:none;border-radius:50%;background:#6a320e}
+.pc-dial .st span{opacity:.45;text-shadow:none}
+.pc-dial .st.on i{background:#ffc06a;box-shadow:0 0 8px #ff8a1f}.pc-dial .st.on span{opacity:1;text-shadow:0 0 6px rgba(255,140,40,.65)}
+.pc-dial .st:hover span{opacity:.85}
+.pc-needle{position:absolute;left:0;right:0;height:3px;margin-top:-1.5px;border-radius:2px;pointer-events:none;transition:top .35s cubic-bezier(.3,1.2,.5,1);
+  background:linear-gradient(90deg,#c22a10,#ff5a2a 20%,#ff7a4a 50%,#ff5a2a 80%,#c22a10);box-shadow:0 0 4px #ff4a1a,0 0 10px #ff4a1a,0 0 22px rgba(255,74,26,.55)}
+.pc-spill{position:absolute;left:-12px;right:-12px;height:70px;margin-top:-35px;pointer-events:none;transition:top .35s cubic-bezier(.3,1.2,.5,1);background:radial-gradient(50% 50% at 50% 50%,rgba(255,80,30,.2),transparent 70%)}
+.pc-row{display:flex;align-items:center;gap:12px;width:100%;padding:6px 10px;border:0;border-radius:6px;background:transparent;cursor:pointer;text-align:left;min-width:0}
+.pc-row:hover{background:rgba(255,140,40,.07)}
+.pc-row.on{background:rgba(255,140,40,.12)}
+.pc-ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pc-mid-col{display:flex;flex-direction:column;gap:14px;min-height:0;min-width:0}
+.pc-now{display:flex;gap:24px;padding:16px;flex:none}
+.pc-cv{width:260px;height:260px;flex:none;border-radius:4px;background:#0a0806;cursor:pointer}
+.pc-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.pc-tst{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;letter-spacing:.06em}
+.pc-title{margin:4px 0 0;font-size:40px;line-height:1.05;font-weight:900}
+.pc-time{font-size:88px;line-height:.9}
+.pc-comet{display:flex;gap:3px;align-items:center;height:18px;cursor:pointer}
+.pc-comet i{width:6px;height:6px;flex:none;border-radius:50%;background:#2a1408}
+.pc-ex{flex:1;min-height:0;display:flex;flex-direction:column;padding:12px 16px 0}
+.pc-tabs{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding-bottom:10px}
+.pc-tab{height:36px;padding:0 12px;border:0;border-radius:6px;background:transparent;font-size:15px;letter-spacing:.04em;cursor:pointer;color:#6a320e}
+.pc-tab:hover{color:#c4561a}.pc-tab.on{color:#ffb35c;text-shadow:0 0 6px rgba(255,140,40,.65);background:rgba(255,140,40,.08)}
+.pc-srch{flex:1 1 240px;display:flex;align-items:center;gap:10px;height:40px;margin-left:auto;padding:0 14px;border-radius:6px;background:#050403;box-shadow:inset 0 0 0 1px #2a1408}
+.pc-srch input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:#ff9a3c;font:900 15px Doto,monospace}
+.pc-srch input::placeholder{color:#6a320e}
+.pc-srch:focus-within{box-shadow:inset 0 0 0 1px #c4561a}
+.pc-body{flex:1;min-height:0;overflow:auto;padding:4px 2px 18px}
+.pc-h{margin:14px 0 10px;font-size:14px;letter-spacing:.08em;font-weight:900;color:#9a5a22}
+.pc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px}
+.pc-card{display:flex;flex-direction:column;gap:7px;padding:0;border:0;background:transparent;cursor:pointer;text-align:left;min-width:0}
+.pc-art{position:relative;aspect-ratio:1;border-radius:3px;overflow:hidden;background:#140a04}
+.pc-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(1) sepia(1) saturate(4.5) hue-rotate(-18deg) brightness(.95) contrast(1.15)}
+.pc-art::after{content:"";position:absolute;inset:0;background:radial-gradient(circle,transparent 0 2.1px,#0a0806 2.6px) 0 0/5px 5px}
+.pc-art b{position:absolute;inset:0;display:grid;place-items:center;font-size:44px;color:#ffb35c;text-shadow:0 0 10px rgba(255,140,40,.6);z-index:1}
+.pc-card:hover .pc-art{box-shadow:0 0 0 2px #c4561a}
+.pc-st{aspect-ratio:1;border-radius:3px;display:grid;place-items:center;font-size:52px;color:#ffc06a;text-shadow:0 0 14px rgba(255,140,40,.8);position:relative;overflow:hidden}
+.pc-st::after{content:"";position:absolute;inset:0;background:radial-gradient(circle,transparent 0 2.1px,rgba(10,8,6,.85) 2.6px) 0 0/5px 5px}.pc-st b{position:relative;z-index:1;font-weight:900}
+.pc-tr{display:grid;grid-template-columns:38px minmax(0,4fr) minmax(0,3fr) 56px 34px 34px;align-items:center;gap:10px;height:46px;padding:0 8px;border-radius:6px;cursor:pointer;font-size:14px}
+.pc-tr:hover{background:rgba(255,140,40,.07)}
+.pc-tr.on{background:rgba(255,140,40,.13)}
+.pc-tr .x{width:30px;height:30px;border:0;border-radius:50%;background:transparent;cursor:pointer;color:#6a320e;display:grid;place-items:center;font-size:16px}
+.pc-tr .x:hover{color:#ffb35c;background:rgba(255,140,40,.1)}
+.pc-tr .x.on{color:#ff8a1f;text-shadow:0 0 8px rgba(255,140,40,.8)}
+.pc-tr.hd{height:30px;cursor:default;font-size:11px;letter-spacing:.1em;color:#6a320e}.pc-tr.hd:hover{background:none}
+.pc-pbtn{height:42px;padding:0 20px;border:0;border-radius:6px;cursor:pointer;font-size:15px;letter-spacing:.06em;background:#2a1408;color:#ffb35c;text-shadow:0 0 6px rgba(255,140,40,.6)}
+.pc-pbtn:hover{background:#3a1c08}.pc-pbtn.pri{background:#ff8a1f;color:#1a0802;text-shadow:none}.pc-pbtn.pri:hover{background:#ffa944}
+.pc-q{display:flex;flex-direction:column;padding:14px 10px;min-height:0}
+.pc-ql{flex:1;min-height:0;overflow:auto}
+.pc-keys{flex:none;border-radius:18px;padding:14px;display:flex;flex-wrap:wrap;align-items:center;gap:14px;background-color:#08090a;background-image:radial-gradient(rgba(255,255,255,.035) .7px,transparent 1px);background-size:2px 2px;box-shadow:inset 0 10px 22px rgba(0,0,0,.95),inset 0 0 0 1px #1b1c1f,0 1px 0 rgba(255,255,255,.06)}
+.pc-kr{flex:999 1 600px;display:flex;gap:10px}
+.pc-key{position:relative;flex:1 1 100px;min-width:84px;height:112px;border:0;border-radius:10px;cursor:pointer;color:#ffb35c;background:linear-gradient(180deg,#3a3c41 0,#25272b 8%,#1c1d20 60%,#141517);box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -6px 12px rgba(0,0,0,.6),0 6px 0 #0a0a0b,0 10px 18px rgba(0,0,0,.6);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;font:700 13px 'Barlow Condensed',sans-serif!important;letter-spacing:.14em}
+.pc-key:active,.pc-key.dn{transform:translateY(4px);box-shadow:inset 0 2px 0 rgba(255,255,255,.12),inset 0 -4px 10px rgba(0,0,0,.6),0 2px 0 #0a0a0b}
+.pc-key svg{filter:drop-shadow(0 -1px 0 rgba(18,5,0,.6)) drop-shadow(0 1.5px 1.5px rgba(255,170,80,.5)) drop-shadow(0 4px 7px rgba(255,125,30,.38))}
+.pc-key .lb{color:#d9d7d0}.pc-key.lit .lb{color:#ffb35c;text-shadow:0 0 6px rgba(255,140,40,.6)}
+.pc-lamp{display:block;width:40px;height:4px;border-radius:2px;background:#2a1408;box-shadow:inset 0 1px 1px rgba(0,0,0,.8)}
+.pc-lamp.on{background:#ff8a1f;box-shadow:0 0 8px #ff8a1f,0 0 16px rgba(255,120,20,.5)}
+.pc-lamp.red.on{background:#ff4a2a;box-shadow:0 0 8px #ff4a2a,0 0 16px rgba(255,60,30,.5)}
+.pc-pil{display:flex;gap:6px}.pc-pil .pc-lamp{width:24px}
+.pc-pilb{display:flex;gap:6px;font:700 9px 'Barlow Condensed',sans-serif!important;letter-spacing:.06em;color:#7d7a72}.pc-pilb span{width:28px;text-align:center}.pc-pil .pc-lamp{width:28px!important}
+.pc-vol{flex:1 1 180px;display:flex;align-items:center;justify-content:center;gap:16px}
+.pc-knob{position:relative;width:100px;height:100px;border-radius:50%;padding:6px;cursor:ns-resize;touch-action:none;box-shadow:0 0 18px rgba(255,120,20,.2)}
+.pc-knob>div{width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 40% 30%,#4a4c52,#1c1d20 60%,#0e0f11);box-shadow:inset 0 2px 0 rgba(255,255,255,.15),0 6px 14px rgba(0,0,0,.7);position:relative}
+.pc-knob span{position:absolute;left:50%;top:8px;width:3px;height:14px;margin-left:-1.5px;border-radius:2px;background:#ffb35c;box-shadow:0 0 6px #ff8a1f;transform-origin:1.5px 36px}
+.pc-dj{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 12px;border-radius:8px;background:#140a04;box-shadow:inset 0 0 0 1px #c4561a}
+.pc-dj input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:#ffb35c;font:900 16px Doto,monospace}
+.pc-dj input::placeholder{color:#7a3a10}
+.pc-msg{position:absolute;left:0;right:0;top:0;text-align:center;font-size:14px;pointer-events:none}
+.pc-empty{padding:30px 6px;font-size:16px;line-height:1.6;color:#9a5a22}
+</style>
+<script>
+/* ===================== MODO ORDENADOR (#pc): la radio del coche, en grande y con ratón y teclado ===================== */
+const PC={on:false,tab:'inicio',q:'',det:null,lim:300,mode:'shuf',applied:'shuf',prevMode:'shuf',onceId:null,lastPos:0,baseSrc:'',dj:false,cvKey:'',msgT:0,raTok:0,
+  ST:[{f:24,n:'FITO',key:'rad:fito'},{f:31,n:'HIT FM',key:'rad:hit'},{f:38,n:'REGGAETÓN',key:'rad:regg'},{f:45,n:'AMER. TRAP',full:'AMERICAN TRAP',key:'rad:trap'},{f:55,n:'FAVORITOS',key:'likes'}]};
+const PCI={prev:'<svg width="32" height="26" viewBox="0 0 24 24" fill="#ffa944" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>',
+  next:'<svg width="32" height="26" viewBox="0 0 24 24" fill="#ffa944" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>',
+  pause:'<svg width="28" height="28" viewBox="0 0 24 24" fill="#ff7a50" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>',
+  play:'<svg width="28" height="28" viewBox="0 0 24 24" fill="#ff7a50" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>',
+  shuf:'<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffa944" stroke-width="2.2" aria-hidden="true"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>',
+  radio:'<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffa944" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 4.9a10 10 0 0 1 0 14.2"/></svg>',
+  once:'<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffa944" stroke-width="2.2" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>',
+  dj:'<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffa944" stroke-width="2.2" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+  heart:'<svg width="28" height="28" viewBox="0 0 24 24" fill="#ffa944" aria-hidden="true"><path d="M12 21s-7-4.4-9.3-9C1.2 8.8 3.3 5 7 5c2 0 3.3 1.1 5 3 1.7-1.9 3-3 5-3 3.7 0 5.8 3.8 4.3 7-2.3 4.6-9.3 9-9.3 9z"/></svg>',
+  app:'<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffa944" stroke-width="2.2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v5"/></svg>'};
+const pcH=html=>{const t=document.createElement('template');t.innerHTML=html.trim();return t.content.firstChild;};
+const pcE=id=>document.getElementById(id);
+
+function pcOn(){if(document.body.classList.contains('carmode'))carOff();PC.on=true;document.body.classList.add('pcmode');try{closeNp();closeLayer();}catch{}
+  if(!document.getElementById('carFonts')){const l=document.createElement('link');l.id='carFonts';l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Doto:wght@700;900&display=swap';document.head.append(l);}
+  const root=pcE('pc');root.hidden=false;$('#app').setAttribute('aria-hidden','true');if(!root.firstChild)pcBuild();
+  {const k=PC.ST.findIndex(s=>s.key===LS.get('carStn',''));PC.stn=k>=0?k:0;}
+  PC.applied=P.repeat==='one'?'once':(P.src==='radio'&&prefs.radio)?'radio':'shuf';PC.mode=PC.applied;
+  pcRenderAll();clearInterval(PC.iv);PC.iv=setInterval(pcTick,250);LS.set('pcStart',1);try{history.replaceState(null,'','#pc');}catch{}}
+function pcOff(){PC.on=false;document.body.classList.remove('pcmode');clearInterval(PC.iv);const root=pcE('pc');if(root)root.hidden=true;$('#app').removeAttribute('aria-hidden');
+  try{history.replaceState(null,'','#'+S.view);}catch{}try{renderPlayer(true);}catch{}}
+
+function pcBuild(){const root=pcE('pc');root.textContent='';
+  const ticks=[],stns=[];for(let f=20;f<=60;f++){const M=f%5===0;ticks.push('<i class="tk" style="top:'+((f-20)/40*100)+'%;left:'+(M?44:50)+'px;width:'+(M?16:8)+'px;background:'+(M?'#ffb35c':'#c4561a')+'"></i>');}
+  const nums=[20,30,40,50,60].map(v=>'<span class="nm pc-led" style="top:'+((v-20)/40*100)+'%">'+v+'</span>').join('');
+  PC.ST.forEach((s,i)=>stns.push('<button class="st" data-stn="'+i+'" style="top:'+((s.f-20)/40*100)+'%" aria-label="Emisora '+s.f+' '+(s.full||s.n)+'"><i></i><span class="pc-led">'+s.n+'</span></button>'));
+  root.innerHTML=`
+<div class="pc-top">
+  <nav class="pc-lcd pc-nav" aria-label="Emisoras y listas">
+    <div class="pc-lb" style="text-align:center">EMISORAS</div>
+    <div class="pc-dial" id="pcDial"><div style="position:absolute;left:52px;top:0;bottom:0;width:1px;background:#8a4a14"></div>${ticks.join('')}${nums}${stns.join('')}<div class="pc-spill" id="pcSpill"></div><div class="pc-needle" id="pcNeedle"></div></div>
+    <div class="pc-led" id="pcDialFt" style="text-align:center;font-size:15px"></div>
+    <div style="height:1px;background:#2a1408;margin:14px 0 10px"></div>
+    <div class="pc-lb" style="padding:0 6px 6px">TUS LISTAS</div>
+    <div id="pcLists" style="overflow:auto;max-height:34%"></div>
+  </nav>
+  <div class="pc-mid-col">
+    <section class="pc-lcd pc-now" aria-label="Sonando ahora" style="position:relative">
+      <canvas class="pc-cv" id="pcCv" width="260" height="260" title="Doble clic: me gusta"></canvas>
+      <div class="pc-info">
+        <div style="display:flex;justify-content:space-between;gap:12px;font-size:15px"><span class="pc-ell" id="pcSrc" style="color:#c4561a"></span><span class="pc-ell pc-hi" id="pcMsg" hidden></span><span class="pc-led" id="pcClock"></span></div>
+        <div class="pc-tst" id="pcTst"></div>
+        <h1 class="pc-title pc-hi pc-ell" id="pcTitle"></h1>
+        <div class="pc-led pc-ell" id="pcSub" style="font-size:19px;color:#e07a2a"></div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:auto"><span class="pc-time pc-hi" id="pcTime">0:00</span><span class="pc-led" id="pcRem" style="font-size:28px;padding-bottom:8px">-0:00</span></div>
+        <div class="pc-comet" id="pcComet" role="slider" aria-label="Posición de la canción" tabindex="0"></div>
+      </div>
+    </section>
+    <section class="pc-lcd pc-ex" aria-label="Explorar">
+      <div class="pc-tabs" id="pcTabs">
+        ${[['inicio','INICIO'],['biblio','CANCIONES'],['artistas','ARTISTAS'],['albumes','ÁLBUMES'],['favs','FAVORITOS']].map(([k,l])=>'<button class="pc-tab" data-tab="'+k+'">'+l+'</button>').join('')}
+        <label class="pc-srch"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c4561a" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span style="position:absolute;left:-9999px">Buscar</span><input id="pcQ" type="search" autocomplete="off" placeholder="BUSCAR  ( / )"></label>
+      </div>
+      <div class="pc-dj" id="pcDj" hidden><span class="pc-hi" style="font-size:15px">DJ ›</span><input id="pcDjIn" placeholder="PÍDELE ALGO: «FITO CON MAREA A PARTES IGUALES»" autocomplete="off"><button class="pc-pbtn pri" id="pcDjGo" style="height:34px">PEDIR</button></div>
+      <div class="pc-body" id="pcBody"></div>
+    </section>
+  </div>
+  <aside class="pc-lcd pc-q" aria-label="Cola">
+    <div style="display:flex;justify-content:space-between;padding:0 8px 8px"><span class="pc-lb">A CONTINUACIÓN</span><span class="pc-dim" id="pcQn" style="font-size:12px"></span></div>
+    <div class="pc-ql" id="pcQl"></div>
+  </aside>
+</div>
+<div class="pc-keys">
+  <div class="pc-kr">
+    <button class="pc-key" id="pcPrev" aria-label="Anterior (P)">${PCI.prev}</button>
+    <button class="pc-key" id="pcPP" aria-label="Play o pausa (espacio)"><span id="pcPPi">${PCI.pause}</span><span class="lb" id="pcPPl">PAUSA</span><span class="pc-lamp red" id="pcPPlamp"></span></button>
+    <button class="pc-key" id="pcNext" aria-label="Siguiente (N)">${PCI.next}</button>
+    <button class="pc-key lit" id="pcMode" aria-label="Modo: aleatorio, radio de la canción o una vez más"><span id="pcModeI">${PCI.shuf}</span><span class="lb" id="pcModeL">ALEATORIO</span><span class="pc-pil"><span class="pc-lamp" data-m="shuf"></span><span class="pc-lamp" data-m="radio"></span><span class="pc-lamp" data-m="once"></span></span><span class="pc-pilb"><span>ALEAT</span><span>RADIO</span><span>+1</span></span></button>
+    <button class="pc-key" id="pcLike" aria-label="Me gusta">${PCI.heart}<span class="lb">ME GUSTA</span><span class="pc-lamp" id="pcLikeLamp"></span></button>
+    <button class="pc-key" id="pcDjK" aria-label="Claude DJ">${PCI.dj}<span class="lb">DJ</span><span class="pc-lamp" id="pcDjLamp"></span></button>
+    <button class="pc-key" id="pcApp" aria-label="Ajustes y app normal">${PCI.app}<span class="lb">AJUSTES</span></button>
+  </div>
+  <div class="pc-vol">
+    <div class="pc-knob" id="pcKnob" role="slider" aria-label="Volumen" aria-valuemin="0" aria-valuemax="100" tabindex="0"><div><span id="pcKnobM"></span></div></div>
+    <div style="display:flex;flex-direction:column;gap:4px"><span class="pc-lb">VOLUMEN</span><span class="pc-led" id="pcVolN" style="font-size:28px">70</span></div>
+  </div>
+</div>`;
+  // eventos
+  pcE('pcDial').addEventListener('click',e=>{const b=e.target.closest('[data-stn]');if(b)pcTune(+b.dataset.stn);});
+  pcE('pcTabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;PC.tab=b.dataset.tab;PC.det=null;PC.lim=300;pcE('pcQ').value='';PC.q='';pcRenderEx();});
+  let qt;pcE('pcQ').addEventListener('input',e=>{clearTimeout(qt);qt=setTimeout(()=>{PC.q=e.target.value;PC.det=null;PC.lim=300;pcRenderEx();},160);});
+  pcE('pcPrev').onclick=()=>{P.prev();};pcE('pcNext').onclick=()=>{P.next();};
+  pcE('pcPP').onclick=()=>{if(!P.current){pcTune(PC.stn);return;}P.toggle();};
+  pcE('pcMode').onclick=pcCycle;pcE('pcLike').onclick=pcLike;pcE('pcApp').onclick=()=>{LS.set('pcStart',0);pcOff();try{go('ajustes');}catch{}};
+  pcE('pcDjK').onclick=()=>{PC.dj=!PC.dj;pcE('pcDj').hidden=!PC.dj;pcE('pcDjLamp').classList.toggle('on',PC.dj);if(PC.dj)setTimeout(()=>pcE('pcDjIn').focus(),30);};
+  const djGo=()=>{const v=pcE('pcDjIn').value.trim();if(!v)return;if(!(S.cfg.apiKey||'').trim()){pcSay('FALTA LA CLAVE DE CLAUDE · AJUSTES');return;}pcE('pcDjIn').value='';pcSay('EL DJ ESTÁ ELIGIENDO…');runDj(v,v);};
+  pcE('pcDjGo').onclick=djGo;pcE('pcDjIn').addEventListener('keydown',e=>{if(e.key==='Enter')djGo();});
+  pcE('pcCv').addEventListener('dblclick',pcLike);
+  const cm=pcE('pcComet');cm.addEventListener('click',e=>{const r=cm.getBoundingClientRect(),n=nowInfo();if(n.dur)P.seek((e.clientX-r.left)/r.width*n.dur);});
+  cm.addEventListener('keydown',e=>{const n=nowInfo();if(e.key==='ArrowRight'){P.seek(n.pos+10);e.preventDefault();}else if(e.key==='ArrowLeft'){P.seek(n.pos-10);e.preventDefault();}});
+  pcE('pcQl').addEventListener('click',e=>{const b=e.target.closest('[data-qi]');if(b)P.load(+b.dataset.qi);});
+  pcE('pcLists').addEventListener('click',e=>{const b=e.target.closest('[data-det]');if(b){PC.det=b.dataset.det;PC.q='';pcE('pcQ').value='';pcRenderEx();}});
+  pcE('pcBody').addEventListener('click',pcBodyClick);
+  const kn=pcE('pcKnob');let drag=null;
+  kn.addEventListener('pointerdown',e=>{drag={y:e.clientY,v:prefs.vol??1};kn.setPointerCapture(e.pointerId);});
+  kn.addEventListener('pointermove',e=>{if(!drag)return;setVol(drag.v+(drag.y-e.clientY)/200);pcVol();});
+  kn.addEventListener('pointerup',()=>{drag=null;});kn.addEventListener('pointercancel',()=>{drag=null;});
+  kn.addEventListener('wheel',e=>{e.preventDefault();setVol((prefs.vol??1)-Math.sign(e.deltaY)*.04);pcVol();},{passive:false});
+  kn.addEventListener('keydown',e=>{if(e.key==='ArrowUp'||e.key==='ArrowRight'){setVol((prefs.vol??1)+.05);pcVol();e.preventDefault();}else if(e.key==='ArrowDown'||e.key==='ArrowLeft'){setVol((prefs.vol??1)-.05);pcVol();e.preventDefault();}});
+  PC.comet=[];for(let i=0;i<64;i++){const d=document.createElement('i');cm.append(d);PC.comet.push(d);}
+}
+function pcSay(m,ms=2600){const el=pcE('pcMsg'),sr=pcE('pcSrc');if(!el)return;el.textContent=m;el.hidden=false;sr.hidden=true;clearTimeout(PC.msgT);PC.msgT=setTimeout(()=>{el.hidden=true;sr.hidden=false;},ms);}
+function pcRenderAll(){pcRenderNav();pcTrack();pcRenderEx();pcVol();}
+function pcRenderNav(){const pls=Object.entries(S.playlists||{}).map(([id,p])=>({k:'pl:'+id,n:p.nm||'Lista',c:(p.ids||[]).length}));
+  const rows=[{k:'likes',n:'ME GUSTA',c:likedIds().length},...pls,{k:'all',n:'TODA LA MÚSICA',c:S.allIds.length}];
+  pcE('pcLists').innerHTML=rows.map(r=>'<button class="pc-row" data-det="'+r.k+'" style="padding:5px 6px"><span class="pc-led pc-ell" style="flex:1;font-size:14px">'+escH(String(r.n).toUpperCase())+'</span><span class="pc-dim" style="font-size:12px">'+r.c+'</span></button>').join('');
+  pcDial();}
+function pcDial(){const k=PC.ST.findIndex(s=>s.key===P.src);if(k>=0)PC.stn=k;const s=PC.ST[PC.stn]||PC.ST[0],y=((s.f-20)/40*100)+'%';
+  pcE('pcNeedle').style.top=y;pcE('pcSpill').style.top=y;pcE('pcDialFt').textContent=s.f+' Hz · '+s.n;
+  document.querySelectorAll('#pcDial .st').forEach((b,i)=>b.classList.toggle('on',i===PC.stn));}
+function escH(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function pcSrcLabel(){const src=P.src||'';if(PC.applied==='radio'&&P.radioSeed)return'RADIO · '+String(P.radioSeed.t||'').toUpperCase();
+  const st=PC.ST.find(s=>s.key===src);if(st)return st.f+' Hz · '+(st.full||st.n);if(!src)return'';if(src==='test')return'PRUEBA DE SONIDO';try{return String(collName(src)).toUpperCase();}catch{return'';}}
+
+/* lo que suena: portada en matriz de LEDs, título, testigos, cola */
+function pcTrack(){if(!PC.on)return;const n=nowInfo(),t=n.t;
+  pcE('pcTitle').textContent=t?String(t.t||'Sin título').toUpperCase():'LA GUANTERA';
+  pcE('pcSub').textContent=t?[t.a,t.al].filter(Boolean).join(' · ').toUpperCase():(S.tracks.size?'PULSA PLAY O ELIGE UNA EMISORA':'SIN MÚSICA TODAVÍA · AJUSTES › TU DRIVE');
+  pcE('pcSrc').textContent=pcSrcLabel();pcDial();pcCover(t);pcQueue();pcTst();
+  const lk=!!(t&&S.likes[t.id]>0);pcE('pcLikeLamp').classList.toggle('on',lk);pcE('pcLike').classList.toggle('lit',lk);
+  document.querySelectorAll('#pcBody .pc-tr[data-id]').forEach(r=>r.classList.toggle('on',!!t&&r.dataset.id===t.id));
+  if(PC.applied==='once'&&PC.onceId&&t&&t.id!==PC.onceId)pcApply(PC.prevMode||'shuf');}
+function pcQueue(){const el=pcE('pcQl');if(!el)return;const a=[];for(let i=P.qi;i<Math.min(P.q.length,P.qi+60);i++){const t=getTrack(P.q[i]);if(!t)continue;
+    a.push('<button class="pc-row'+(i===P.qi?' on':'')+'" data-qi="'+i+'"><span class="pc-dim" style="width:24px;font-size:13px">'+(i===P.qi?'▶':String(i-P.qi).padStart(2,'0'))+'</span><span style="min-width:0;flex:1"><span class="pc-ell pc-hi" style="display:block;font-size:14px">'+escH(String(t.t||'').toUpperCase())+'</span><span class="pc-ell pc-mid" style="display:block;font-size:11px">'+escH(String(t.a||'').toUpperCase())+'</span></span></button>');}
+  el.innerHTML=a.join('')||'<div class="pc-empty">LA COLA ESTÁ VACÍA</div>';pcE('pcQn').textContent=P.q.length?(P.qi+1)+'/'+P.q.length:'';}
+function pcTst(){const n=nowInfo(),t=n.t,on=(k,v)=>'<span class="'+(v?'pc-led':'pc-dim')+'">'+k+'</span>';
+  pcE('pcTst').innerHTML=on('ALEAT',PC.applied==='shuf')+on('RADIO',PC.applied==='radio')+on('+1',PC.applied==='once')+on('GUSTA',!!(t&&S.likes[t.id]>0))+on('FUND',!!(prefs.fx&&prefs.xf>0))+on('MUTE',!!AE.el.muted||(prefs.vol??1)===0);
+  document.querySelectorAll('#pcMode .pc-lamp').forEach(l=>l.classList.toggle('on',l.dataset.m===PC.mode));}
+function pcCover(t){const key=t?(t.c||'h:'+t.id):'none';if(key===PC.cvKey)return;PC.cvKey=key;const cv=pcE('pcCv'),x=cv.getContext('2d');
+  const N=52,P2=5,draw=px=>{x.clearRect(0,0,260,260);const pal=[[42,20,8],[106,50,14],[196,86,26],[255,122,26],[255,179,92],[255,224,168]];
+    for(let j=0;j<N;j++)for(let i=0;i<N;i++){const v=px(i,j),k=Math.max(0,Math.min(5,Math.round(v*5))),c=pal[k];
+      if(k>=3){x.fillStyle='rgba('+c[0]+','+c[1]+','+c[2]+',.16)';x.fillRect(i*P2,j*P2,P2,P2);}x.fillStyle='rgb('+c[0]+','+c[1]+','+c[2]+')';x.beginPath();x.arc(i*P2+2.5,j*P2+2.5,1.9,0,6.3);x.fill();}};
+  const gen=()=>{let hsh=hashStr(key);const cx=20+(hsh%13),cy=18+((hsh>>4)%14);draw((i,j)=>{const d=Math.hypot(i-cx,j-cy)/30;return Math.max(.08,1-d)*(.75+.25*Math.sin((i+j+(hsh&7))/3));});};
+  if(!t||!t.c){gen();return;}gen();
+  COV.url(t.c).then(u=>{if(!u||PC.cvKey!==key)return;const im=new Image();im.decoding='async';im.onload=()=>{if(PC.cvKey!==key)return;try{const c=document.createElement('canvas');c.width=c.height=N;const g=c.getContext('2d',{willReadFrequently:true});
+      const s=Math.min(im.width,im.height);g.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,N,N);const d=g.getImageData(0,0,N,N).data;
+      draw((i,j)=>{const o=(j*N+i)*4;const l=(.3*d[o]+.59*d[o+1]+.11*d[o+2])/255;return Math.pow(l,.9);});}catch{}};im.src=u;}).catch(()=>{});}
+function pcVol(){const v=Math.round((prefs.vol??1)*100);pcE('pcVolN').textContent=v;pcE('pcKnobM').style.transform='rotate('+(-135+v*2.7)+'deg)';
+  pcE('pcKnob').style.background='conic-gradient(from 225deg,#ff8a1f 0 '+(v*2.7)+'deg,#2a1408 '+(v*2.7)+'deg 270deg,transparent 270deg)';pcE('pcKnob').setAttribute('aria-valuenow',v);}
+
+/* latido: reloj, barra, play/pausa; +1 vuelve al modo de antes */
+function pcTick(){if(!PC.on||document.hidden)return;const n=nowInfo();
+  pcE('pcTime').textContent=fmt(n.pos);pcE('pcRem').textContent='-'+fmt(Math.max(0,(n.dur||0)-n.pos));
+  const d=new Date(),dd=['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][d.getDay()];pcE('pcClock').textContent=dd+' '+d.getDate()+'  '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  const p=n.dur?Math.round(n.pos/n.dur*63):-1;if(p!==PC.cp){PC.cp=p;PC.comet.forEach((el,i)=>{if(i===p){el.style.cssText='width:12px;height:12px;background:#fff1dc;box-shadow:0 0 10px #ffb35c';}else if(i<p){const a=Math.max(.2,1-(p-i)/16);el.style.cssText='background:rgba(255,154,60,'+a.toFixed(2)+')';}else el.style.cssText='';});}
+  if(n.playing!==PC.pl){PC.pl=n.playing;pcE('pcPPi').innerHTML=n.playing?PCI.pause:PCI.play;pcE('pcPPl').textContent=n.playing?'PAUSA':'PLAY';pcE('pcPPlamp').classList.toggle('on',n.playing);}
+  if(PC.applied==='once'&&n.t&&n.t.id===PC.onceId){if(PC.lastPos>8&&n.pos<2){pcApply(PC.prevMode||'shuf');pcSay('OTRA VEZ · LUEGO '+(PC.applied==='radio'?'RADIO':'ALEATORIO'));}PC.lastPos=n.pos;}
+  const tk=[PC.applied,!!AE.el.muted,prefs.vol].join();if(tk!==PC.tk){PC.tk=tk;pcTst();}}
+
+/* emisoras y modos (igual que en el coche) */
+function pcTune(k){const s=PC.ST[k];if(!s)return;const ids=collIds(s.key);PC.stn=k;LS.set('carStn',s.key);pcDial();
+  if(!ids.length){pcSay(!S.tracks.size?'SIN MÚSICA TODAVÍA':s.key==='likes'?'SIN FAVORITOS · DOBLE CLIC EN LA PORTADA':(s.full||s.n)+' · SIN CANCIONES');return;}
+  clearTimeout(PC.cyT);prefs.radio=false;P.radioSeed=null;P.repeat='off';PC.applied=PC.mode=PC.prevMode='shuf';P.play(ids,-1,s.key,{shuffle:true});pcSay('EMISORA '+s.f+' Hz · '+(s.full||s.n));}
+function pcCycle(){const MO=['shuf','radio','once'];PC.mode=MO[(MO.indexOf(PC.mode)+1)%3];pcTst();
+  pcE('pcModeI').innerHTML=PCI[PC.mode];pcE('pcModeL').textContent={shuf:'ALEATORIO',radio:'RADIO',once:'OTRA VEZ'}[PC.mode];
+  pcSay({shuf:'ALEATORIO',radio:'RADIO DE ESTA CANCIÓN',once:'ESTA SONARÁ UNA VEZ MÁS'}[PC.mode]);
+  clearTimeout(PC.cyT);PC.cyT=setTimeout(()=>{if(!pcApply(PC.mode)){PC.mode=PC.applied;pcTst();pcE('pcModeI').innerHTML=PCI[PC.mode];pcE('pcModeL').textContent={shuf:'ALEATORIO',radio:'RADIO',once:'OTRA VEZ'}[PC.mode];}},900);}
+function pcApply(m){const cur=P.current,was=PC.applied;
+  if(m==='once'){if(!cur){pcSay('NO HAY NADA SONANDO');return false;}P.repeat='one';PC.onceId=cur.id;PC.lastPos=nowInfo().pos;if(was!=='once')PC.prevMode=was;PC.applied='once';pcTst();return true;}
+  P.repeat='off';PC.onceId=null;
+  if(was==='once'&&m===PC.prevMode){PC.applied=PC.mode=m;pcAfterMode();return true;}
+  if(m==='radio'){if(!cur||cur.test){pcSay('PON UNA CANCIÓN DE TU MÚSICA PRIMERO');return false;}
+    if(P.src!=='radio')PC.baseSrc=P.src;prefs.radio=true;P.radioSeed=cur;P.radioHint=/^rad:/.test(PC.baseSrc||'')?PC.baseSrc.slice(4):null;
+    const more=similarTo(cur,40,new Set([cur.id]),P.radioHint);P.q=P.q.slice(0,P.qi+1).concat(more);P.orig=null;P.shuffle=false;P.src='radio';
+    pcSay('RADIO · '+String(cur.t||'').toUpperCase());try{if(typeof CarUI!=='undefined'){PC.raCtx=PC.raCtx||{say:m2=>{pcSay(m2);pcQueue();}};CarUI.prototype.radioAsk.call(PC.raCtx,cur);}}catch{}}
+  else{prefs.radio=false;P.radioSeed=null;if(was==='radio'||(was==='once'&&PC.prevMode==='radio')){const key=PC.baseSrc||PC.ST[PC.stn].key,ids=collIds(key).filter(id=>!cur||id!==cur.id);
+      P.q=(cur?[cur.id]:[]).concat(shuffleArr(ids));P.qi=0;P.orig=null;P.src=key;P.shuffle=true;}else if(cur){if(!P.shuffle)P.toggleShuffle();}else P.shuffle=true;}
+  PC.applied=PC.mode=PC.prevMode=m;try{savePrefs();}catch{}pcAfterMode();return true;}
+function pcAfterMode(){pcTst();pcE('pcModeI').innerHTML=PCI[PC.mode];pcE('pcModeL').textContent={shuf:'ALEATORIO',radio:'RADIO',once:'OTRA VEZ'}[PC.mode];pcE('pcSrc').textContent=pcSrcLabel();pcQueue();try{renderQueueIfOpen();}catch{}}
+function pcLike(){const t=P.current;if(!t||t.test){pcSay('NADA QUE GUARDAR');return;}const was=S.likes[t.id]>0;toggleLike(t.id);pcSay(was?'QUITADA DE ME GUSTA':'♥ GUARDADA EN ME GUSTA');setTimeout(()=>{pcTrack();pcRenderNav();},60);}
+
+/* explorar: inicio, canciones, artistas, álbumes, favoritos, búsqueda y fichas */
+function pcRenderEx(){if(!PC.on)return;document.querySelectorAll('#pcTabs [data-tab]').forEach(b=>b.classList.toggle('on',!PC.det&&!PC.q&&b.dataset.tab===PC.tab));
+  const B=pcE('pcBody');B.scrollTop=0;B.innerHTML='';
+  if(!S.tracks.size){B.innerHTML='<div class="pc-empty">TODAVÍA NO HAY MÚSICA EN ESTE APARATO.<br>PULSA AJUSTES › ENTRA CON GOOGLE Y BUSCA TU CARPETA DE DRIVE.</div>';return;}
+  if(PC.det)return pcDetail(B,PC.det);
+  const q=norm(PC.q);if(q)return pcSearch(B,q);
+  if(PC.tab==='inicio')return pcHome(B);
+  if(PC.tab==='biblio')return B.append(pcSongs(S.allIds,'all',true));
+  if(PC.tab==='favs'){const ids=likedIds();if(!ids.length){B.innerHTML='<div class="pc-empty">AÚN NO HAS GUARDADO NADA. DOBLE CLIC EN LA PORTADA O LA TECLA ME GUSTA.</div>';return;}return B.append(pcHead('ME GUSTA',ids.length+' CANCIONES','likes',ids),pcSongs(ids,'likes'));}
+  if(PC.tab==='artistas')return B.append(pcCards(S.artists.slice(0,PC.lim).map(a=>({det:'ar:'+a.id,t:a.name,s:a.ids.length+' CANC.',c:a.cover}))),pcMore(S.artists.length));
+  if(PC.tab==='albumes')return B.append(pcCards(S.albums.slice(0,PC.lim).map(a=>({det:'al:'+a.id,t:a.title,s:a.artist,c:a.cover}))),pcMore(S.albums.length));}
+function pcMore(n){if(n<=PC.lim)return'';return pcH('<div style="padding:16px 0;text-align:center"><button class="pc-pbtn" data-more="1">MOSTRAR MÁS ('+(n-PC.lim)+')</button></div>');}
+function pcHome(B){B.append(pcH('<div class="pc-h">EMISORAS</div>'));
+  const g=pcH('<div class="pc-grid"></div>');const bg=['#a8420a','#c4561a','#8a2a3a','#4a2a14','#6a5a14'];
+  PC.ST.forEach((s,i)=>g.append(pcH('<button class="pc-card" data-stn="'+i+'"><span class="pc-st" style="background:radial-gradient(70% 60% at 40% 40%,#ffb35c,'+bg[i]+' 55%,#140a04)"><b>'+s.f+'</b></span><span class="pc-hi pc-ell" style="font-size:15px">'+(s.full||s.n)+'</span><span class="pc-mid" style="font-size:12px">'+collIds(s.key).length+' CANCIONES</span></button>')));B.append(g);
+  const pls=Object.entries(S.playlists||{});if(pls.length){B.append(pcH('<div class="pc-h">TUS LISTAS</div>'),pcCards(pls.map(([id,p])=>({det:'pl:'+id,t:p.nm||'Lista',s:(p.ids||[]).length+' CANC.',c:(getTrack((p.ids||[])[0])||{}).c}))));}
+  const seen=new Set(),al=[];for(const id of S.recentIds||[]){const t=S.tracks.get(id);if(!t||seen.has(t.alId))continue;seen.add(t.alId);const A=S.albumById.get(t.alId);if(A)al.push(A);if(al.length>=12)break;}
+  if(al.length)B.append(pcH('<div class="pc-h">AÑADIDO HACE POCO</div>'),pcCards(al.map(a=>({det:'al:'+a.id,t:a.title,s:a.artist,c:a.cover}))));}
+function pcCards(items){const g=pcH('<div class="pc-grid"></div>');for(const it of items){const ini=escH(String(it.t||'?').trim().charAt(0).toUpperCase());
+    const b=pcH('<button class="pc-card" data-det="'+escH(it.det)+'"><span class="pc-art"><b>'+ini+'</b></span><span class="pc-hi pc-ell" style="font-size:14px">'+escH(String(it.t||'').toUpperCase())+'</span><span class="pc-mid pc-ell" style="font-size:12px">'+escH(String(it.s||'').toUpperCase())+'</span></button>');
+    if(it.c){const art=b.firstChild;COV.url(it.c).then(u=>{if(u&&art.isConnected){art.textContent='';art.append(h('img',{src:u,alt:'',decoding:'async',loading:'lazy'}));}}).catch(()=>{});}g.append(b);}return g;}
+function pcHead(title,sub,key,ids){return pcH('<div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px;margin:6px 0 14px"><div style="flex:1;min-width:0"><div class="pc-mid" style="font-size:12px;letter-spacing:.1em">'+escH(sub)+'</div><div class="pc-hi pc-ell" style="font-size:34px;line-height:1.1">'+escH(String(title).toUpperCase())+'</div></div><button class="pc-pbtn pri" data-play="'+escH(key)+'">▶ REPRODUCIR</button><button class="pc-pbtn" data-shuf="'+escH(key)+'">ALEATORIO</button></div>');}
+function pcSongs(ids,key,lim){const wrap=pcH('<div></div>');wrap.append(pcH('<div class="pc-tr hd"><span>#</span><span>TÍTULO</span><span>ÁLBUM</span><span style="text-align:right">DUR.</span><span></span><span></span></div>'));
+  const cur=P.current,n=lim?Math.min(ids.length,PC.lim):Math.min(ids.length,1500),a=[];
+  for(let i=0;i<n;i++){const t=S.tracks.get(ids[i]);if(!t)continue;const lk=S.likes[t.id]>0;
+    a.push('<div class="pc-tr'+(cur&&cur.id===t.id?' on':'')+'" data-id="'+t.id+'" data-i="'+i+'" data-k="'+escH(key)+'"><span class="pc-dim" style="font-size:13px">'+(i+1)+'</span><span style="min-width:0"><span class="pc-hi pc-ell" style="display:block">'+escH(String(t.t||'').toUpperCase())+'</span><span class="pc-mid pc-ell" style="display:block;font-size:12px">'+escH(String(t.a||'').toUpperCase())+'</span></span><span class="pc-mid pc-ell" style="font-size:13px">'+escH(String(t.al||'').toUpperCase())+'</span><span class="pc-mid" style="text-align:right;font-size:13px">'+(t.du?fmt(t.du):'')+'</span><button class="x'+(lk?' on':'')+'" data-like="'+t.id+'" aria-label="Me gusta">♥</button><button class="x" data-enq="'+t.id+'" aria-label="Poner a continuación">+</button></div>');}
+  wrap.insertAdjacentHTML('beforeend',a.join(''));PC.lists=PC.lists||{};PC.lists[key]=ids;if(lim){const m=pcMore(ids.length);if(m)wrap.append(m);}return wrap;}
+function pcDetail(B,key){const ids=collIds(key);let sub=ids.length+' CANCIONES';const k=key.split(':')[0];
+  if(k==='al'){const A=S.albumById.get(key.slice(3));if(A)sub=A.artist+(A.year?' · '+A.year:'')+' · '+sub;}
+  B.append(pcH('<button class="pc-pbtn" data-back="1" style="height:32px;margin-bottom:6px">‹ VOLVER</button>'),pcHead(collName(key),sub.toUpperCase(),key,ids));
+  if(k==='ar'){const R=S.artistById.get(key.slice(3));if(R&&R.albums.length>1){B.append(pcH('<div class="pc-h">ÁLBUMES</div>'),pcCards(R.albums.map(id=>S.albumById.get(id)).filter(Boolean).map(a=>({det:'al:'+a.id,t:a.title,s:a.year||'',c:a.cover}))),pcH('<div class="pc-h">CANCIONES</div>'));}}
+  B.append(pcSongs(ids,key));}
+function pcSearch(B,q){PC.ix=PC.ix&&PC.ix.n===S.tracks.size?PC.ix:{n:S.tracks.size,m:new Map([...S.tracks.values()].map(t=>[t.id,norm([t.t,t.a,t.al].join(' '))]))};
+  const words=q.split(' ').filter(Boolean),hit=s=>words.every(w=>s.includes(w));const ids=[];for(const [id,s] of PC.ix.m){if(hit(s)){ids.push(id);if(ids.length>=400)break;}}
+  const ar=S.artists.filter(a=>hit(norm(a.name))).slice(0,18),al=S.albums.filter(a=>hit(norm(a.title+' '+a.artist))).slice(0,18);
+  if(!ids.length&&!ar.length&&!al.length){B.innerHTML='<div class="pc-empty">NADA PARA «'+escH(PC.q.toUpperCase())+'»</div>';return;}
+  if(ar.length)B.append(pcH('<div class="pc-h">ARTISTAS</div>'),pcCards(ar.map(a=>({det:'ar:'+a.id,t:a.name,s:a.ids.length+' CANC.',c:a.cover}))));
+  if(al.length)B.append(pcH('<div class="pc-h">ÁLBUMES</div>'),pcCards(al.map(a=>({det:'al:'+a.id,t:a.title,s:a.artist,c:a.cover}))));
+  if(ids.length){B.append(pcH('<div class="pc-h">CANCIONES · '+ids.length+(ids.length>=400?'+':'')+'</div>'),pcSongs(ids,'search'));}}
+function pcBodyClick(e){const t=e.target;let b;
+  if((b=t.closest('[data-stn]')))return pcTune(+b.dataset.stn);
+  if((b=t.closest('[data-like]'))){toggleLike(b.dataset.like);b.classList.toggle('on',S.likes[b.dataset.like]>0);setTimeout(()=>{pcTrack();pcRenderNav();},60);return;}
+  if((b=t.closest('[data-enq]'))){P.enqueue([b.dataset.enq],true);pcSay('SONARÁ A CONTINUACIÓN');setTimeout(pcQueue,60);return;}
+  if((b=t.closest('[data-more]'))){PC.lim+=300;pcRenderEx();return;}
+  if((b=t.closest('[data-back]'))){PC.det=null;pcRenderEx();return;}
+  if((b=t.closest('[data-play]'))){const k=b.dataset.play;pcLeaveRadio();P.play(collIds(k),0,k,{shuffle:false});return;}
+  if((b=t.closest('[data-shuf]'))){const k=b.dataset.shuf;pcLeaveRadio();P.play(collIds(k),-1,k,{shuffle:true});return;}
+  if((b=t.closest('[data-det]'))){PC.det=b.dataset.det;pcRenderEx();return;}
+  if((b=t.closest('.pc-tr[data-id]'))){const k=b.dataset.k,ids=(PC.lists&&PC.lists[k])||[b.dataset.id];pcLeaveRadio();P.play(ids,+b.dataset.i,k==='search'?'search':k,{shuffle:false});}}
+function pcLeaveRadio(){if(PC.applied==='shuf')return;prefs.radio=false;P.radioSeed=null;P.repeat='off';clearTimeout(PC.cyT);PC.applied=PC.mode=PC.prevMode='shuf';pcAfterMode();}
+
+/* enganches con el resto de la app */
+{const _ra=renderAll;renderAll=function(){_ra();if(PC.on){pcRenderNav();pcRenderEx();pcTrack();}};}
+{const _otc=onTrackChange;onTrackChange=function(){_otc();if(PC.on)pcTrack();};}
+{const _ul=updateLikeUI;updateLikeUI=function(){_ul();if(PC.on){pcTst();pcE('pcLikeLamp').classList.toggle('on',!!(P.current&&S.likes[P.current.id]>0));}};}
+document.addEventListener('keydown',e=>{if(!PC.on)return;if(/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||'')))return;
+  if(e.key==='/'){e.preventDefault();pcE('pcQ').focus();}else if(e.key==='ArrowRight'&&!e.target.closest('[role=slider]')){P.seek(nowInfo().pos+10);}else if(e.key==='ArrowLeft'&&!e.target.closest('[role=slider]')){P.seek(nowInfo().pos-10);}
+  else if(e.key==='l'||e.key==='L')pcLike();else if(e.key==='Escape'&&(PC.det||PC.q)){PC.det=null;PC.q='';pcE('pcQ').value='';pcRenderEx();}});
+</script>
+
 <script>try{boot();}catch(e){console.error('boot',e);}</script>
 <script src="https://accounts.google.com/gsi/client" async onload="gisReady()"></script>
 </body>
