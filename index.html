@@ -706,7 +706,7 @@ const P={q:[],orig:null,qi:-1,shuffle:false,repeat:'off',src:'',
     if(this.orig){const j=this.orig.indexOf(id);if(j>=0)this.orig.splice(j,1);}renderQueueIfOpen();}};
 
 function vibeOf(t){const a=norm(t.a||''),g=norm(t.g||''),v=new Set();const tg=artTag(t);if(tg){tg.e.forEach(x=>v.add(x));tg.s.forEach(x=>v.add('s:'+x));}
-  try{for(const k of ['fito','hit','regg','trap'])if(radioKind(t,k))v.add(k);}catch{}
+  try{for(const k of ['fito','hit','regg','trap','divas','popes','rockes'])if(radioKind(t,k))v.add(k);}catch{}
   if(v.has('fito')||KIND_RE.rock.test(a)||/rock|metal|punk|grunge/.test(g))v.add('rock');return v;}
 function similarTo(t,n,ex,hint){if(!t||t.test||!S.tracks.size)return[];const mates=new Set();try{for(const pl of Object.values(S.playlists||{})){const ids=(pl&&pl.ids)||[];if(ids.includes(t.id))ids.forEach(i=>mates.add(i));}}catch{}const dec=t.y?Math.floor(parseInt(t.y,10)/10):null,tv=vibeOf(t),tg=t.g?norm(t.g):'';if(!tv.size&&hint)tv.add(hint);
   const score=x=>{const xv=vibeOf(x);let sh=0;for(const k of tv)if(xv.has(k))sh+=k[1]===':'?.5:1;
@@ -2409,7 +2409,7 @@ class Component extends DCLogic {
       infoTap: () => this.dblTap(),
       swCancel: () => { this.sw = null; },
       needleY: yOf(st.freq).toFixed(1), needleCls: 'needle' + (st.drag ? '' : ' snap'), spillCls: 'spill' + (st.drag ? '' : ' snap'), freqR: Math.round(st.freq),
-      stationLb: st.mode === 'radio' && this.radioLb ? 'RADIO · ' + String(this.radioLb).toUpperCase().slice(0, 26) : (this.srcLabel && this.srcLabel()) ? String(this.srcLabel()).toUpperCase().slice(0, 30) : S[st.stn].f + ' Hz · ' + S[st.stn].n, temp: this.dayStr(), clock: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'),
+      stationLb: st.mode === 'radio' && this.radioLb ? 'RADIO · ' + String(this.radioLb).toUpperCase().slice(0, 26) : (this.srcLabel && this.srcLabel()) ? String(this.srcLabel()).toUpperCase().slice(0, 30) : S[st.stn].f + ' Hz · ' + (S[st.stn].hd || S[st.stn].n), temp: this.dayStr(), clock: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'),
       dialFoot: tuned ? S[st.drag ? nr.k : st.stn].f + ' Hz · ' + S[st.drag ? nr.k : st.stn].n : st.freq.toFixed(1) + ' Hz · · ·',
       noiseOp: st.drag ? (nr.noise * .55).toFixed(2) : '0', cvW: CVW, cvH: CVW * .55, snowD: st.drag ? 'block' : 'none',
       title: ttlTxt, ttlCls: 'mq ttl' + (ttlMove ? '' : ' still'), ttlTail: ttlMove ? '\u00a0\u00a0·\u00a0\u00a0' + ttlTxt + '\u00a0\u00a0·\u00a0\u00a0' : '', sub, subTail: subMove ? '  ·  ' + sub + '  ·  ' : '', subCls: 'mq sub' + (subMove ? ' mv' : ''),
@@ -3846,6 +3846,37 @@ const RADIO_RE={
   regg:/bad bunny|anuel|myke towers|quevedo|\bfeid\b|rauw|ozuna|balvin|daddy yankee|maluma|bizarrap|trueno|\bkhea\b|tiago pzk|lit killah|rels b|morad|jhay|\bmora\b|eladio|arcangel|de la ghetto|nicky jam|wisin|yandel|don omar|farruko|\bsech\b|tangana|bryant myers|nengo|ñengo|cosculluela|tego|plan b|zion|lunay|dalex|mike bahia|ryan castro|blessd|peso pluma|natanael|yung beef|kidd keo|saiko|omar montes|jc reyes|beny jr|\bemilia\b|\btini\b|maria becerra|nicki nicole|karol g|young miko|cazzu|anitta|natti natasha|becky g|duki|paulo londra|manuel turizo|sebastian yatra|\bcamilo\b|rvfv|lola indigo|bad gyal|la pantera|abhir|hens|\bdei v\b|\bjere klein\b|\bxavi\b|\bfuerza regida\b|grupo frontera|chencho|\bkevvo\b|alvaro diaz|jay wheeler|lenny tavarez|\bcris mj\b|\bclarent\b|\bluar la l\b|ovy on the drums|\bsky rompiendo\b|tainy|\bboza\b/,
   trap:/travis scott|\bfuture\b|young thug|lil baby|21 savage|\bdrake\b|metro boomin|playboi carti|lil uzi|\bmigos\b|\boffset\b|\bquavo\b|takeoff|\bgunna\b|juice wrld|xxxtentacion|lil durk|youngboy|don toliver|roddy ricch|pop smoke|lil wayne|kanye|\bye\b|kendrick|j\.? cole|a\$ap|asap rocky|tyler,? the creator|lil nas|megan thee stallion|cardi b|nicki minaj|central cee|kodak black|\bpolo g\b|lil tecca|trippie redd|ski mask|6ix9ine|tekashi|\byeat\b|ken carson|destroy lonely|moneybagg|rod wave|lil yachty|2 chainz|gucci mane|young nudy|\bnav\b|swae lee|rae sremmurd|chief keef|lil skies|suicideboy|lil pump|\bdababy\b|jack harlow|\bmetro\b|\bglorilla\b|ice spice|\bsza\b|\bfuture\b|\bpartynextdoor\b|\bbig sean\b|\btravis\b|\bnle choppa\b|\blil peep\b|\bdenzel curry\b|\bjid\b|\b50 cent\b|\beminem\b|\bsnoop\b|\bdr\.? dre\b/
 };
+/* emisoras nuevas: Divas FM, Pop Español FM, Rock FM y la del día (cambia cada día de temática) */
+Object.assign(RADIO_RE,{
+  divas:/\bemilia\b|\btini\b|maria becerra|nicki nicole|aitana|rosalia|olivia rodrigo|sabrina carpenter|karol g|lola indigo|ana mena|becky g|dua lipa|ariana|taylor swift|bad gyal|young miko|cazzu|anitta|natti natasha|billie eilish|miley|chappell roan|tate mcrae|\blali\b|la joaqui|\bnathy peluso\b|\bbelinda\b|\bdanna\b|\bkenia os\b|\bmon laferte\b|\bsofia reyes\b|\bkaty perry\b|\bselena gomez\b|\bdemi lovato\b|\bcamila cabello\b|\bdoja cat\b|\bsza\b|\bzara larsson\b|\bava max\b|\bmaria jose\b|\bchanel\b|\bede\b|\bvicco\b|\brosa linn\b|\bteresa rabal\b|\blaura pausini\b|\bpaulina rubio\b|\bthalia\b|\bgloria trevi\b/,
+  popes:/taburete|guitarricadelafuente|guitarrica|pablo alboran|alejandro sanz|andres suarez|pablo lopez|manuel carrasco|vanesa martin|nil moliner|dani fernandez|\bmarlon\b|funambulista|rozalen|\bel kanka\b|\bberet\b|alvaro de luna|valeria castro|natalia lacunza|sen senra|carlos sadness|\bsidonie\b|vetusta morla|\bizal\b|love of lesbian|\bdvicio\b|antonio jose|\bsiloe\b|marwan|ismael serrano|\bxoel lopez\b|quique gonzalez|leiva|\bdepedro\b|\bmuerdo\b|\bmorat\b|\bcamilo\b|\bjorge drexler\b|\bjuanes\b|sebastian yatra|\bdavid otero\b|\bel pescao\b|\bpignoise\b|\bla oreja de van gogh\b|\bamaral\b|\bmalu\b|\bpablo motos\b|\bjulieta venegas\b|\bmikel izal\b|\bdani martin\b|\bbelen aguilera\b|\bmaria arnal\b|\bsoleá morente\b|\bsolea morente\b|\bdellafuente\b|\bcaracoles\b|\balvaro soler\b|\banuel aa\b-x/,
+  rockes:/\bmarea\b|extremoduro|\brobe\b|la fuga|barricada|rosendo|\bleno\b|los suaves|reincidentes|ska-?p|sinkope|despistaos|\bla raiz\b|el drogas|\buoho\b|los porretas|la pegatina|boikot|marea|\bburning\b|\bmagoa\b|\bkutxi\b|\bsoziedad alkoholika\b|\bnarco\b|\bberri txarrak\b|\bfito\b(?! y fitipaldis)|platero|medina azahara|triana|\bmagoa\b|\bdeskarga\b|\bnach scratch\b|\btxarango\b|\bboni\b|\bsinkope\b|\bdesakato\b|\bgatillazo\b|\bla polla\b|\beskorbuto\b|\bmojinos escozios\b|\bmuchachito\b|\bcanteca de macao\b|\bmalaka youth\b|\bbe ricky\b|\bjarabe de palo\b|\bm-clan\b|\bmclan\b|\bhéroes del silencio\b|heroes del silencio|bunbury|\bloquillo\b|\bsuaves\b|\bgandula\b|\bsiniestro total\b|\blos piratas\b|\btequila\b|\bburning\b|\bobus\b|\bbarón rojo\b|baron rojo|\bmago de oz\b|\bwarcry\b|\bsaratoga\b|\btierra santa\b/
+});
+const DIA_TEMAS=[
+  {k:'clasicos',n:'CLÁSICOS',d:'Los 70, 80 y 90',re:/queen|abba|mecano|hombres g|radio futura|nacha pop|los secretos|duncan dhu|la union|alaska|loquillo|tequila|el ultimo de la fila|michael jackson|madonna|bee gees|the police|dire straits|elton john|bon jovi|a-ha|toto|europe|eurythmics|cyndi lauper|whitney houston|roxette|the cure|depeche mode|u2|guns n|ac\/?dc|led zeppelin|rolling stones|beatles|camilo sesto|raphael|julio iglesias|rocio jurado|nino bravo|los pecos|miguel rios|el canto del loco/,y:[1960,1999]},
+  {k:'rumba',n:'RUMBA',d:'Rumba y rumbita de barrio',re:/estopa|melendi|delinquentes|chunguitos|los chichos|camela|\bel barrio\b|kiko veneno|\bperet\b|gipsy kings|los manolos|\bjunco\b|\bmaka\b|el arrebato|ketama|las grecas|rebujitos|demarco|sergio contreras|mojinos|bambino|muchachito|el canijo|la cabra mecanica|haze|los aslandticos|\bnavajita platea\b|\bisrael fernandez\b/,g:/rumba/},
+  {k:'indie',n:'INDIE',d:'Indie español',re:/vetusta morla|\bizal\b|love of lesbian|sidonie|lori meyers|dorian|la casa azul|carolina durante|viva suecia|arde bogota|ginebras|\bsupersubmarina\b|\bel columpio asesino\b|\blos planetas\b|\bniños mutantes\b|\bshinova\b|\bmorgan\b|\bsilvana estrada\b|\bvaliente\b|\bcupido\b|\bbaiuca\b|\bdepresion sonora\b|\bmujeres\b|\bbiznaga\b|\bteo planell\b/,g:/indie/},
+  {k:'rapes',n:'RAP ESPAÑOL',d:'Rap de aquí',re:/kase\.?o|violadores del verso|\bnach\b|sfdk|rayden|natos y waor|\bhaze\b|mala rodriguez|ayax y prok|hard gz|foyone|\bxhelazz\b|\bzpu\b|\bnoult\b|\bdani fiction\b|\brecycled j\b|\bcecilio g\b|\bsho-?hai\b|\bel chojin\b|\btoteking\b|\bshotta\b|\bbejo\b|\bkaze\b|\bpiezas\b|\bmorad\b|\bdaviles de novelda\b/,g:/rap espa|hip hop espa|spanish hip/},
+  {k:'latino',n:'SALSA Y BACHATA',d:'Salsa, bachata y merengue',re:/marc anthony|romeo santos|aventura|juan luis guerra|prince royce|celia cruz|carlos vives|gilberto santa rosa|grupo niche|joe arroyo|elvis crespo|olga tanon|victor manuelle|hector lavoe|ruben blades|oscar d.?leon|la india|frankie ruiz|jerry rivera|toby love|xtreme|monchy|antony santos|frank reyes/,g:/salsa|bachata|merengue|cumbia/},
+  {k:'electro',n:'ELECTRÓNICA',d:'Para ir con el pie pesado',re:/avicii|david guetta|calvin harris|\bkygo\b|martin garrix|tiesto|swedish house mafia|alan walker|zedd|\bdavid getta\b|marshmello|the chainsmokers|daft punk|fisher|\bmeduza\b|\brufus du sol\b|\bfred again\b|\bdisclosure\b|\bpeggy gou\b|\bbob sinclar\b|\bdeadmau5\b|\bskrillex\b|\bdimitri vegas\b|\bafrojack\b|\bhardwell\b|\barmin van buuren\b|\bvini vici\b|\binfected mushroom\b/,g:/electro|house|techno|edm|trance|dance/},
+  {k:'punk',n:'PUNK Y SKA',d:'Caña y saltos',re:/ska-?p|la polla|eskorbuto|reincidentes|boikot|sinkope|the clash|green day|blink.?182|offspring|ramones|sex pistols|sum 41|bad religion|\bnofx\b|gatillazo|\bdesakato\b|\bla raiz\b|\bdubioza\b|\bthe specials\b|\bmadness\b|\bsiniestro total\b|\bkortatu\b|\bnegu gorriak\b|\bsoziedad alkoholika\b|\btoundra\b/,g:/punk|ska/},
+  {k:'flamenco',n:'FLAMENCO',d:'Flamenco y aires del sur',re:/camaron|paco de lucia|nina pastori|india martinez|pitingo|diego el cigala|estrella morente|enrique morente|\bkiki morente\b|\bjosé mercé\b|jose merce|\barcangel\b-x|\bmiguel poveda\b|\bsara baras\b|\bvicente amigo\b|\bmoncho\b|\bpastora soler\b|\bdiana navarro\b|\bpasion vega\b|\bsiempre asi\b|\bmedina azahara\b|\bel pele\b|\bremedios amaya\b|\blola flores\b|\bisabel pantoja\b|\brocio jurado\b|\bmanolo garcia\b-x|\bdellafuente\b/,g:/flamenc|copla|sevillana/},
+  {k:'cantautor',n:'CANTAUTORES',d:'Letras para escuchar',re:/sabina|serrat|ismael serrano|quique gonzalez|el kanka|rozalen|luis eduardo aute|silvio rodriguez|drexler|pablo milanes|victor manuel|ana belen|luis ramiro|marwan|\bandres suarez\b|\bdavid ruiz\b|\bloquillo\b-x|\bpedro guerra\b|\bjavier krahe\b|\blabordeta\b|\bjoan manuel\b|\bzahara\b|\bclara peya\b/,g:/cantautor|singer.?songwriter/},
+  {k:'rockint',n:'ROCK INTERNACIONAL',d:'Guitarras de fuera',re:/queen|ac\/?dc|guns n|nirvana|metallica|foo fighters|red hot|arctic monkeys|oasis|the killers|pearl jam|the strokes|muse|green day|linkin park|bon jovi|aerosmith|the white stripes|kings of leon|\bblur\b|radiohead|led zeppelin|the doors|pink floyd|deep purple|black sabbath|iron maiden|kiss|the cranberries|rage against|system of a down|queens of the stone age|royal blood|greta van fleet|imagine dragons/,g:/rock/},
+  {k:'baladas',n:'BALADAS',d:'Para ir despacito',re:/alejandro sanz|luis miguel|laura pausini|eros ramazzotti|ricardo arjona|franco de vita|camilo sesto|rocio durcal|jose luis perales|\bmalu\b|pablo alboran|\badele\b|whitney houston|celine dion|mariah carey|\bsam smith\b|lewis capaldi|ed sheeran|\bsin bandera\b|\breik\b|\bcamila\b|\bmana\b|\bjesse y joy\b|\bkany garcia\b|\bvanesa martin\b|\bpastora soler\b|\bmiguel bose\b/,g:/balad|bolero/},
+];
+const DIA_KEY=()=>{const d=new Date();return d.getFullYear()*1000+Math.floor((d-new Date(d.getFullYear(),0,1))/864e5);};
+let diaCache={day:-1,sig:'',t:null};
+function temaDia(){const day=DIA_KEY(),sig=S.tracks.size;if(diaCache.day===day&&diaCache.sig===sig&&diaCache.t)return diaCache.t;
+  const N=DIA_TEMAS.length,ok=th=>{let c=0;for(const t of S.tracks.values()){if(temaMatch(t,th)&&++c>=25)return true;}return false;};
+  let t=null;for(let i=0;i<N;i++){const c=DIA_TEMAS[(day+i)%N];if(!S.tracks.size||ok(c)){t=c;break;}}
+  if(!t){let best=-1;for(const c of DIA_TEMAS){let n=0;for(const x of S.tracks.values())if(temaMatch(x,c))n++;if(n>best){best=n;t=c;}}} // biblioteca pequeña: la temática que más tenga
+  diaCache={day,sig,t};return t;}
+function temaMatch(t,th){const a=norm(t.a||''),g=norm(t.g||'');if(th.re.test(a))return true;if(th.g&&th.g.test(g))return true;
+  if(th.y&&t.y){const y=parseInt(t.y,10);if(y>=th.y[0]&&y<=th.y[1]&&/pop|rock|disco|new wave/.test(g))return true;}return false;}
+function capArtists(ids,caps,def){const by=new Map();for(const id of ids){const t=S.tracks.get(id);const a=norm(t.a||'');let key=a,cap=def;for(const [re,c] of caps)if(re.test(a)){cap=c;key=re.source;break;}
+  if(!by.has(key))by.set(key,{cap,ids:[]});by.get(key).ids.push(id);}
+  const out=[];for(const {cap,ids:L} of by.values()){const sh=shuffleArr(L.slice());out.push(...sh.slice(0,cap));}return out;}
 /* Con clave de Claude, cada artista de tu biblioteca se clasifica una sola vez (emisoras + etiquetas de estilo) y se guarda en este aparato.
    Las emisoras y la radio de canción usan eso; sin clave, se tira de las listas de nombres de arriba. */
 const ART=LS.get('artTags',{}),TAGS={busy:false,last:0};
@@ -3862,13 +3893,18 @@ async function tagArtists(){if(TAGS.busy||!(S.cfg.apiKey||'').trim()||!navigator
       LS.set('artTags',ART);}
     if(done){radioCache={sig:'',m:{}};try{CAR&&CAR.say('EMISORAS AFINADAS · '+done+' ARTISTAS');}catch{}}}
   catch(e){console.warn('etiquetas',e);}finally{TAGS.busy=false;}}
-function radioKind(t,k){const a=norm(t.a||''),g=norm(t.g||'');if(k==='fito')return RADIO_RE.fito.test(a)||RADIO_RE.fito.test(norm(t.aa||''));const tg=artTag(t);if(tg&&(tg.e.length||tg.s.length))return tg.e.includes(k);if(RADIO_RE[k].test(a))return true;
+function radioKind(t,k){const a=norm(t.a||''),g=norm(t.g||'');if(k==='fito')return RADIO_RE.fito.test(a)||RADIO_RE.fito.test(norm(t.aa||''));
+  if(k==='divas')return RADIO_RE.divas.test(a)||/carita triste/.test(norm(t.t||''));
+  if(k==='popes')return RADIO_RE.popes.test(a);
+  if(k==='rockes')return RADIO_RE.rockes.test(a)&&!/fitipaldis/.test(a)||(/rock/.test(g)&&/espa|spanish|urbano|rock y pop/.test(g)&&!/fitipaldis/.test(a));
+  if(k==='dia')return temaMatch(t,temaDia());const tg=artTag(t);if(tg&&(tg.e.length||tg.s.length))return tg.e.includes(k);if(RADIO_RE[k].test(a))return true;
   if(k==='regg')return /reggaet|regueton|urbano latino|dembow|latin trap|latin urban|perreo/.test(g);
   if(k==='trap')return /\btrap\b|hip.?hop|\brap\b/.test(g)&&!/latin|espa|urbano|reggaet/.test(g)&&!RADIO_RE.regg.test(a);
   if(k==='hit')return /\bpop\b|dance|edm|electro.?pop/.test(g)&&!/rock|metal|punk/.test(g);return false;}
 let radioCache={sig:'',m:{}};
-function radioIds(k){const sig=S.tracks.size+':'+S.allIds.length;if(radioCache.sig!==sig)radioCache={sig,m:{}};if(radioCache.m[k])return radioCache.m[k];
+function radioIds(k){const sig=S.tracks.size+':'+S.allIds.length+':'+DIA_KEY();if(radioCache.sig!==sig)radioCache={sig,m:{}};if(radioCache.m[k])return radioCache.m[k];
   let ids=S.allIds.filter(id=>{const t=S.tracks.get(id);return t&&radioKind(t,k);});
+  if(k==='rockes')ids=capArtists(ids,[[/\bmarea\b|\bkutxi\b/,1e9],[/platero/,4],[/extremoduro|\brobe\b/,30]],15); // que mande Marea y Platero apenas salga
   if(k==='hit'){ // y lo último que has metido que no sea de otra emisora: los éxitos nuevos que estás escuchando
     const other=t=>radioKind(t,'fito')||radioKind(t,'regg')||radioKind(t,'trap')||/rock|metal|punk/.test(norm(t.g||''))||KIND_RE.rock.test(norm(t.a||''));
     const have=new Set(ids),fresh=S.allIds.map(id=>S.tracks.get(id)).filter(t=>t&&!have.has(t.id)&&!other(t)).sort((x,y)=>(y.ad||0)-(x.ad||0)).slice(0,40).map(t=>t.id);ids=ids.concat(fresh);}
@@ -3880,17 +3916,27 @@ function carKind(t){if(!t)return null;const a=norm(t.a||''),g=norm(t.g||'');
   if(/reggaet|regueton|trap|urbano|urban|dembow|latin/.test(g))return 'regg';
   if(/rumba|flamenc/.test(g))return 'barrio';if(/sevillana|cantautor|pop espanol|spanish pop/.test(g))return 'pijo';
   if(/rock|metal|punk|grunge/.test(g))return 'rock';return null;}
+const STATIONS_FM=td=>[
+  {f:22,n:'FITO FM',full:'FITO FM',key:'rad:fito',d:'Fito y Fitipaldis y Platero y Tú'},
+  {f:26.5,n:'HIT FM',full:'HIT FM',key:'rad:hit',d:'Éxitos pop de antes y de ahora'},
+  {f:31,n:'REGGAETÓN',hd:'REGGAETÓN FM',full:'REGGAETÓN FM',key:'rad:regg',d:'Urbano latino'},
+  {f:35.5,n:'TRAP FM',full:'TRAP FM',key:'rad:trap',d:'Trap y rap de EE. UU.'},
+  {f:40,n:'DIVAS FM',full:'DIVAS FM',key:'rad:divas',d:'Emilia, Aitana, Rosalía, Olivia Rodrigo, Sabrina Carpenter…'},
+  {f:44.5,n:'POP ESP FM',hd:'POP ESPAÑOL FM',full:'POP ESPAÑOL FM',key:'rad:popes',d:'Taburete, Guitarricadelafuente, Alborán… español tranquilo'},
+  {f:49,n:'ROCK FM',hd:'ROCK ESPAÑOL FM',full:'ROCK ESPAÑOL FM',key:'rad:rockes',d:'Marea por delante, Extremoduro y compañía'},
+  {f:53.5,n:'DEL DÍA FM',hd:'DEL DÍA · '+td.n,full:'DEL DÍA FM · '+td.n,key:'rad:dia',d:'Hoy: '+td.n.toLowerCase()+' ('+td.d.toLowerCase()+'). Cambia cada día'},
+  {f:58,n:'FAVORITOS',hd:'FAVORITOS FM',full:'FAVORITOS FM',key:'likes',d:'Todo lo que te gusta'}];
 class CarUI extends Component{
   constructor(p){super(p);
     this.shows={fito:this.story};this.lv=null;this.covId=null;
     let m=LS.get('carMode','shuf');if(m!=='radio')m='shuf';
-    Object.assign(this.state,{stn:0,freq:24,i:0,t:0,playing:false,ph:'cover',pf:0,mode:m,like:false,fund:prefs.fx&&prefs.xf>0,mute:false});
+    Object.assign(this.state,{stn:0,freq:22,i:0,t:0,playing:false,ph:'cover',pf:0,mode:m,like:false,fund:prefs.fx&&prefs.xf>0,mute:false});
     this.buildStations();{const k=this.ST.findIndex(x=>x.key===LS.get('carStn',''));if(k>=0)Object.assign(this.state,{stn:k,freq:this.ST[k].f});}this.syncStation(true);this.anim={id:null,on:false,next:1e9,len:170,p:.5,left:0};
     this.applied=null;this.prevMode=m;this.applyMode(m==='radio'?'shuf':m,true);if(m==='radio')this.state.mode='shuf';}
   show(k){if(!this.shows[k])this.shows[k]=GAL.SCENES.some(x=>x.arch===k)?new GalShow(k):new Show(k,(hashStr(k)%9000)+77);return this.shows[k];}
   buildStations(){
-    this.ST=[{f:24,n:'FITO',key:'rad:fito'},{f:31,n:'HIT FM',key:'rad:hit'},{f:38,n:'REGGAETÓN',key:'rad:regg'},{f:45,n:'AMER. TRAP',full:'AMERICAN TRAP',key:'rad:trap'},{f:55,n:'FAVORITOS',key:'likes'}];
-    this.stSig=S.tracks.size+':'+S.artists.length+':'+(likedIds().length?1:0);if(S.artists.length)setTimeout(()=>tagArtists(),4000);}
+    const td=temaDia();this.ST=STATIONS_FM(td);
+    this.stSig=S.tracks.size+':'+S.artists.length+':'+(likedIds().length?1:0)+':'+DIA_KEY();if(S.artists.length)setTimeout(()=>tagArtists(),4000);}
   stations(){return this.ST;}
   syncStation(init){const k=this.ST.findIndex(s=>s.key===P.src);if(k>=0&&(k!==this.state.stn)&&!this.state.drag){LS.set('carStn',this.ST[k].key);if(init)Object.assign(this.state,{stn:k,freq:this.ST[k].f});else this.setState({stn:k,freq:this.ST[k].f});}}
   cur(){const n=nowInfo(),t=n.t;return{t:n.title,a:(t&&t.a)||'',al:(t&&t.al)||'',d:Math.max(1,n.dur||1),ch:this.anim&&this.anim.on?this.anim.kind:null,id:n.id,tr:t,n};}
@@ -3913,7 +3959,7 @@ class CarUI extends Component{
   /* ----- latido principal: copia el estado real y mueve las animaciones ----- */
   wink(){const st=this._root;if(!st)return;if(this.wk!=null){st.style.setProperty('--b'+this.wk,'1');this.wk=null;}else if(Math.random()<.035){this.wk=Math.floor(Math.random()*4);st.style.setProperty('--b'+this.wk,(.72+Math.random()*.16).toFixed(2));}}
   tick(){this.fl=(this.fl||0)+1;this.wink();if(this.state.drag&&Date.now()-(this.dragAt||0)>2500){try{this.stopNoise();}catch{}const n=this.near(this.state.freq);this.setState({drag:false,freq:this.ST[n.k].f,stn:n.k});if(P.src!==this.ST[n.k].key)this.tune(n.k);}const c=this._cur=this.cur(),st=this.state,n=c.n,A=this.anim;
-    if(this.stSig!==S.tracks.size+':'+S.artists.length+':'+(likedIds().length?1:0))this.buildStations();
+    if(this.stSig!==S.tracks.size+':'+S.artists.length+':'+(likedIds().length?1:0)+':'+DIA_KEY())this.buildStations();
     this.syncStation();
     if(this.applied==='radio'&&P.current&&P.src!=='radio'){prefs.radio=false;P.radioSeed=null;this.radioLb='';this.applied='shuf';this.prevMode='shuf';LS.set('carMode','shuf');if(st.mode==='radio')this.setState({mode:'shuf'});} // han puesto otra cosa (álbum, DJ…): la radio se apaga
     if(this.wantPlay&&!P.current){if(Date.now()-this.wantPlay>25000)this.wantPlay=0;else if(S.tracks.size){this.wantPlay=0;if(!this.tuneCurrent())P.toggle();}}
@@ -4271,7 +4317,7 @@ body.pcmode>#app,body.pcmode>#np{display:none!important}
 <script>
 /* ===================== MODO ORDENADOR (#pc): Spotify por dentro, la radio del coche por fuera ===================== */
 const PC={on:false,view:{v:'home'},back:[],fwd:[],libF:'all',q:'',lim:500,right:'np',mode:'shuf',applied:'shuf',prevMode:'shuf',onceId:null,lastPos:0,baseSrc:'',cvKey:'',raTok:0,
-  ST:[{f:24,n:'FITO',full:'FITO',key:'rad:fito',d:'Fito y Fitipaldis y Platero y Tú'},{f:31,n:'HIT FM',full:'HIT FM',key:'rad:hit',d:'Éxitos pop de antes y de ahora'},{f:38,n:'REGGAETÓN',full:'REGGAETÓN',key:'rad:regg',d:'Urbano latino'},{f:45,n:'AMER. TRAP',full:'AMERICAN TRAP',key:'rad:trap',d:'Trap y rap de EE. UU.'},{f:55,n:'FAVORITOS',full:'FAVORITOS',key:'likes',d:'Todo lo que te gusta'}]};
+  get ST(){const k=DIA_KEY()+':'+S.tracks.size;if(this._stK!==k){this._stK=k;this._st=STATIONS_FM(temaDia());}return this._st;}};
 const PCI={
   home:'<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3 2.5 11h2.5v9h5.5v-6h3v6H19v-9h2.5z"/></svg>',
   search:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>',
@@ -4379,7 +4425,7 @@ let pcTT=0;function pcSay(m,ms=2400){const t=pcE('pcToast');if(!t)return;t.textC
 /* portadas */
 function pcCov(c,size,cls,ini){const fs=Math.round(size*.42);return '<span class="pc-cov '+(cls||'')+'" style="width:'+size+'px;height:'+size+'px;font-size:'+fs+'px"'+(c?' data-cv="'+escH(c)+'"':'')+'>'+(c?'':'<b>'+escH(ini||'')+'</b>')+'</span>';}
 function pcFillCovers(scope){scope.querySelectorAll('[data-cv]').forEach(el=>{const c=el.dataset.cv;el.removeAttribute('data-cv');COV.url(c).then(u=>{if(u&&el.isConnected){const im=new Image();im.decoding='async';im.loading='lazy';im.alt='';im.src=u;el.append(im);}else if(el.isConnected&&!el.firstChild)el.innerHTML='<b>♪</b>';}).catch(()=>{});});}
-function pcStnCov(s,size){const bg=['#a8420a','#c4561a','#8a2a3a','#4a2a14','#6a5a14'][PC.ST.indexOf(s)]||'#a8420a';
+function pcStnCov(s,size){const bg=['#a8420a','#c4561a','#8a2a3a','#4a2a14','#9a2a5a','#6a5a14','#5a1a0a','#2a5a4a','#6a5a14'][PC.ST.indexOf(s)]||'#a8420a';
   return '<span class="pc-cov" style="width:'+size+'px;height:'+size+'px;font-size:'+Math.round(size*.36)+'px;background:radial-gradient(70% 60% at 40% 38%,#ffd08a,'+bg+' 55%,#140a04)"><b>'+s.f+'</b></span>';}
 function pcLikeCov(size){return '<span class="pc-cov" style="width:'+size+'px;height:'+size+'px;font-size:'+Math.round(size*.4)+'px;background:radial-gradient(70% 60% at 50% 40%,#ffd08a,#ff5a2a 50%,#3a0a04)"><b>♥</b></span>';}
 
@@ -4452,7 +4498,7 @@ function pcMarkPlaying(){const id=P.current&&P.current.id;document.querySelector
 
 /* buscar */
 function pcSearch(B){const q=norm(PC.q);
-  if(!q){B.innerHTML='<div class="pc-sec" style="padding-top:76px"><div class="pc-h2"><h2>EXPLORAR TODO</h2></div><div class="pc-tiles">'+[...PC.ST.map(s=>({k:s.key,t:s.full,bg:['#a8420a','#c4561a','#8a2a3a','#4a2a14','#6a5a14'][PC.ST.indexOf(s)]})),{k:'all',t:'TODA TU MÚSICA',bg:'#5a3414'},{k:'dj',t:'CLAUDE DJ',bg:'#7a2a10'}].map(x=>
+  if(!q){B.innerHTML='<div class="pc-sec" style="padding-top:76px"><div class="pc-h2"><h2>EXPLORAR TODO</h2></div><div class="pc-tiles">'+[...PC.ST.map(s=>({k:s.key,t:s.full,bg:['#a8420a','#c4561a','#8a2a3a','#4a2a14','#9a2a5a','#6a5a14','#5a1a0a','#2a5a4a','#6a5a14'][PC.ST.indexOf(s)]||'#a8420a'})),{k:'all',t:'TODA TU MÚSICA',bg:'#5a3414'},{k:'dj',t:'CLAUDE DJ',bg:'#7a2a10'}].map(x=>
     '<button class="pc-tile" '+(x.k==='dj'?'data-gov="dj"':'data-open="'+escH(x.k)+'"')+' style="background:linear-gradient(135deg,'+x.bg+',#140a04 120%)"><span>'+escH(x.t)+'</span></button>').join('')+'</div></div>';return;}
   PC.ix=PC.ix&&PC.ix.n===S.tracks.size?PC.ix:{n:S.tracks.size,m:new Map([...S.tracks.values()].map(t=>[t.id,norm([t.t,t.a,t.al].join(' '))]))};
   const words=q.split(' ').filter(Boolean),hit=s=>words.every(w=>s.includes(w));const ids=[];for(const [id,s] of PC.ix.m){if(hit(s)){ids.push(id);if(ids.length>=500)break;}}
