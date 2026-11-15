@@ -665,7 +665,8 @@ const P={q:[],orig:null,qi:-1,shuffle:false,repeat:'off',src:'',
     if(o.shuffle!==undefined)this.shuffle=o.shuffle;
     if(start<0||start>=ids.length)start=this.shuffle?Math.floor(Math.random()*ids.length):0;
     this.orig=ids.slice();this.src=src;
-    if(this.shuffle){const first=ids[start];this.q=[first,...shuffleArr(ids.filter((_,i)=>i!==start))];await this.load(0);}
+    if(this.shuffle&&/^(rad:|likes$)/.test(src)&&typeof radioOrder==='function'){this.q=radioOrder(src,ids);await this.load(0);}
+    else if(this.shuffle){const first=ids[start];this.q=[first,...shuffleArr(ids.filter((_,i)=>i!==start))];await this.load(0);}
     else{this.q=ids.slice();await this.load(start);}},
   async load(i,{autoplay=true,pos=0}={}){endListen();if(AE.xf)cancelXf();
     this.qi=i;const lt=this.lt=(this.lt||0)+1;const t=this.current;if(!t)return;onTrackChange();let url;
@@ -685,7 +686,7 @@ const P={q:[],orig:null,qi:-1,shuffle:false,repeat:'off',src:'',
     if(AE.el.paused)await this.resume();else this.pause();},
   async next(auto=false){if(S.ctrl&&!auto)return remoteCmd({op:'next'});const i=this.nextIdx(auto);
     if(i==null){if(prefs.radio&&this.radioSeed){const recent=new Set(this.q.slice(-Math.min(150,Math.max(8,Math.floor(S.tracks.size/3)))));let more=similarTo(this.radioSeed,25,recent,this.radioHint);if(!more.length)more=similarTo(this.radioSeed,25,new Set([this.current&&this.current.id]),this.radioHint);if(more.length){this.q.push(...more);return this.load(this.qi+1);}}
-      else if(document.body.classList.contains('carmode')&&/^(rad:|likes|all)/.test(this.src||'')){const cur=this.current,ids=shuffleArr(collIds(this.src).filter(id=>!cur||id!==cur.id));if(ids.length){this.q.push(...ids);return this.load(this.qi+1);}}
+      else if(document.body.classList.contains('carmode')&&/^(rad:|likes|all)/.test(this.src||'')){const cur=this.current,ids=/^(rad:|likes)/.test(this.src)?radioOrder(this.src,collIds(this.src),this.q.slice(-60)):shuffleArr(collIds(this.src).filter(id=>!cur||id!==cur.id));if(ids.length){this.q.push(...ids);return this.load(this.qi+1);}}
       else if(auto&&prefs.radio){const more=similarTo(this.current,25,new Set(this.q));if(more.length){this.q.push(...more);if(this.orig)this.orig.push(...more);return this.load(this.qi+1);}}
       this.pause();try{AE.el.currentTime=0;}catch{}endListen();renderPlayer();return;}
     return this.load(i);},
@@ -708,15 +709,19 @@ const P={q:[],orig:null,qi:-1,shuffle:false,repeat:'off',src:'',
 function vibeOf(t){const a=norm(t.a||''),g=norm(t.g||''),v=new Set();const tg=artTag(t);if(tg){tg.e.forEach(x=>v.add(x));tg.s.forEach(x=>v.add('s:'+x));}
   try{for(const k of ['fito','hit','regg','trap','divas','popes','rockes'])if(radioKind(t,k))v.add(k);}catch{}
   if(v.has('fito')||KIND_RE.rock.test(a)||/rock|metal|punk|grunge/.test(g))v.add('rock');return v;}
-function similarTo(t,n,ex,hint){if(!t||t.test||!S.tracks.size)return[];const mates=new Set();try{for(const pl of Object.values(S.playlists||{})){const ids=(pl&&pl.ids)||[];if(ids.includes(t.id))ids.forEach(i=>mates.add(i));}}catch{}const dec=t.y?Math.floor(parseInt(t.y,10)/10):null,tv=vibeOf(t),tg=t.g?norm(t.g):'';if(!tv.size&&hint)tv.add(hint);
+function similarTo(t,n,ex,hint){if(!t||t.test||!S.tracks.size)return[];const mates=new Set();try{for(const pl of Object.values(S.playlists||{})){const ids=(pl&&pl.ids)||[];if(ids.includes(t.id))ids.forEach(i=>mates.add(i));}}catch{}const dec=t.y?Math.floor(parseInt(t.y,10)/10):null,tv=vibeOf(t),tg=t.g?norm(t.g):'',tl=langOf(t),td=dateOf(t);if(!tv.size&&hint)tv.add(hint);
   const score=x=>{const xv=vibeOf(x);let sh=0;for(const k of tv)if(xv.has(k))sh+=k[1]===':'?.5:1;
-    return (x.arId===t.arId?3:0)+(mates.has(x.id)?2.5:0)+sh*3.2+(tv.size&&xv.size&&!sh?-4:0)+(tg&&x.g&&norm(x.g)===tg?2:0)+(dec!=null&&x.y&&Math.floor(parseInt(x.y,10)/10)===dec?1:0)+(S.likes[x.id]?.8:0)+Math.random()*1.6;};
+    const xl=langOf(x),xd=dateOf(x),dy=td!=null&&xd!=null?Math.abs(td-xd):null;
+    return (x.arId===t.arId?2.4:0)+(mates.has(x.id)?2.5:0)+sh*3.2+(tv.size&&xv.size&&!sh?-4:0)+(tg&&x.g&&norm(x.g)===tg?2:0)+(dec!=null&&x.y&&Math.floor(parseInt(x.y,10)/10)===dec?1:0)
+      +(tl&&xl?(tl===xl?1.6:-2.2):0)+(dy==null?0:dy<2?1.3:dy<5?.6:dy>12?-1:0)+Math.log(tasteW(x.id))*2.2+Math.random()*1.4;};
   // solo lo que de verdad se parece (mismo rollo, artista o género); lo demás únicamente si no hay casi nada
   const rel=x=>{if(x.arId===t.arId||mates.has(x.id))return true;if(tg&&x.g&&norm(x.g)===tg)return true;const xv=vibeOf(x);let st=0;for(const k of tv)if(xv.has(k)){if(k[1]!==':')return true;if(++st>=2)return true;}return!tv.size&&!tg;};
   const every=[...S.tracks.values()].filter(x=>!x.test&&x.id!==t.id),goodAll=every.filter(rel),pool=(goodAll.length>=8?goodAll:every).filter(x=>!ex.has(x.id));
   const out=[],per={};for(const [,x] of pool.map(x=>[score(x),x]).sort((a,b)=>b[0]-a[0])){
-    if((per[x.arId]=(per[x.arId]||0)+1)>4&&pool.length>n)continue;out.push(x.id);if(out.length>=n)break;}
-  return shuffleArr(out.slice(0,Math.max(6,Math.round(n*.6)))).concat(out.slice(Math.max(6,Math.round(n*.6))));}
+    if((per[x.arId]=(per[x.arId]||0)+1)>(x.arId===t.arId?3:2)&&pool.length>n)continue;out.push(x.id);if(out.length>=n)break;}
+  const sh=shuffleArr(out.slice(0,Math.max(6,Math.round(n*.6)))).concat(out.slice(Math.max(6,Math.round(n*.6))));
+  for(let i=1;i<sh.length;i++){const a=getTrack(sh[i-1]),b=getTrack(sh[i]);if(a&&b&&a.arId===b.arId){const j=sh.findIndex((id,k)=>k>i&&getTrack(id)&&getTrack(id).arId!==a.arId);if(j>0)[sh[i],sh[j]]=[sh[j],sh[i]];}}
+  return sh;}
 
 /* eventos de las platinas */
 AE.decks.forEach((d,i)=>{
@@ -743,7 +748,7 @@ function cancelXf(){clearTimeout(AE.xfTimer);AE.decks[1-AE.cur].pause();AE.setLe
 const L={t:null,secs:0,last:null};
 function startListen(t){L.t=t;L.secs=0;L.last=null;}
 function tickListen(){const ct=AE.el.currentTime;if(L.last!=null&&!AE.el.paused){const dd=ct-L.last;if(dd>0&&dd<1.6)L.secs+=dd;}L.last=ct;}
-function endListen(){if(L.t&&L.secs>=5)recordListen(L.t,L.secs);L.t=null;L.secs=0;L.last=null;}
+function endListen(){if(L.t)try{noteTaste(L.t,L.secs);}catch{}if(L.t&&L.secs>=5)recordListen(L.t,L.secs);L.t=null;L.secs=0;L.last=null;}
 addEventListener('pagehide',()=>{endListen();saveStateNow();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)saveStateNow();else{wake();renderDials();}});
 
@@ -1197,9 +1202,9 @@ function openEq(){const g=AE.gains();
 /* modo coche */
 const carBtn=(act,icon,label)=>h('button',{class:'pbtn','data-act':act,'aria-label':label},ic(icon));
 function goFull(){if(typeof SIM!=='undefined'&&SIM)return;try{const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen({navigationUI:'hide'}).catch(()=>{});}catch{}}
-function carOn(){if(typeof PC!=='undefined'&&PC.on)pcOff();document.body.classList.add('carmode');if(!prefs.fx||!(prefs.xf>0)){prefs.fx=true;if(!(prefs.xf>0))prefs.xf=4;try{savePrefs();}catch{}}goFull();if(!window.__gf){window.__gf=1;['pointerup','click','touchend','keydown'].forEach(e=>document.addEventListener(e,()=>{if(document.body.classList.contains('carmode'))goFull();},{capture:true,passive:true}));}closeNp();closeLayer();$('#car').hidden=false;$('#app').setAttribute('aria-hidden','true');renderCar();wake();
+function carOn(){if(typeof PC!=='undefined'&&PC.on)pcOff();LS.set('lastMode','car');document.body.classList.add('carmode');if(!prefs.fx||!(prefs.xf>0)){prefs.fx=true;if(!(prefs.xf>0))prefs.xf=4;try{savePrefs();}catch{}}goFull();if(!window.__gf){window.__gf=1;['pointerup','click','touchend','keydown'].forEach(e=>document.addEventListener(e,()=>{if(document.body.classList.contains('carmode'))goFull();},{capture:true,passive:true}));}closeNp();closeLayer();$('#car').hidden=false;$('#app').setAttribute('aria-hidden','true');renderCar();wake();
   try{history.replaceState(null,'','#coche');}catch{}}
-function carOff(){document.body.classList.remove('carmode');if(typeof CAR!=='undefined'&&CAR){try{CAR.unmount();}catch(e){}CAR=null;}$('#car').hidden=true;$('#car').textContent='';$('#app').removeAttribute('aria-hidden');
+function carOff(){LS.set('lastMode','app');document.body.classList.remove('carmode');if(typeof CAR!=='undefined'&&CAR){try{CAR.unmount();}catch(e){}CAR=null;}$('#car').hidden=true;$('#car').textContent='';$('#app').removeAttribute('aria-hidden');
   try{if(wl)wl.release();}catch{}wl=null;try{history.replaceState(null,'','#'+S.view);}catch{}renderPlayer(true);}
 function renderCarOld(){const c=$('#car');c.textContent='';const pm=presetMap();c.classList.toggle('lite',!prefs.viz);
   c.append(h('div',{class:'trim wood'}),
@@ -1595,7 +1600,7 @@ async function boot(){try{document.documentElement.style.setProperty('--wood-img
   if(!device){device={id:rid(8),kind:guessKind()};device.name=KIND[device.kind].name;LS.set('dev',device);S.firstRun=true;}
   const hv=location.hash.slice(1);if(VIEWS.includes(hv))S.view=hv;
   renderNav();renderView(true);renderPlayer(true);renderDials();renderPresets();requestAnimationFrame(specLoop);
-  if(hv==='pc'||hv==='ordenador'||(!hv&&LS.get('pcStart',0)&&!prefs.carStart))setTimeout(pcOn,0);else if(hv==='coche'||prefs.carStart||(S.firstRun&&device.kind==='car'))carOn();
+  if(hv==='pc'||hv==='ordenador'||(!hv&&LS.get('pcStart',0)&&!prefs.carStart))setTimeout(pcOn,0);else if(hv==='coche'||prefs.carStart||(S.firstRun&&device.kind==='car')||(!hv&&LS.get('lastMode','')==='car'&&matchMedia('(display-mode: fullscreen),(display-mode: standalone)').matches))carOn(); // instalada en la tablet: abre directa en el coche
   await Promise.all([SY.loadLocal(),LIB.loadLocal()]);
   try{const st=await IDB.get('kv','stats');if(st&&st.ym===ym()&&st.dev===device.id){S.stats=st;S.statsId=statsName();}}catch{}
   DL.init();renderAll();if(AUTH.ok())onAuth();
@@ -2534,7 +2539,7 @@ function drawBody(G,P,cs){
   const [rx,ry]=B.hr;const hc=pol(neck[0],neck[1],ry+.9,180+P.lean+P.tilt*.5);const hx=hc[0]+P.hx,hy=hc[1];J.head=[hx,hy];
   G.line(neck[0],neck[1],hx,hy+ry-.5,skin,wo?1.3:1.8);
   const ht=hair.t,hl=hair.lv??3,fl=P.hair||0;
-  const HB=new Grid();
+  const HB=_HB||(_HB=new Grid());HB.g.fill(0);
   if(ht==='long'||ht==='wavy'||ht==='rock'||ht==='curly'){const len=ht==='rock'?9:ht==='curly'?7:wo?7.5:12,wd=ht==='wavy'||ht==='curly'?(wo?1.2:1.8):(wo?.6:1);
     HB.poly([[hx-rx-wd*.6,hy-1],[hx+rx+wd*.6,hy-1],[hx+rx+wd+fl*.5,hy+len*.45],[hx+rx+wd*.5+fl,hy+len],[hx-rx-wd*.5+fl*.8,hy+len],[hx-rx-wd+fl*.3,hy+len*.45]],hl);
     if(ht==='wavy'||ht==='curly')for(let i=0;i<len;i+=2){HB.px(hx-rx-wd-.3+fl*.3*(i/len)+((i/2)%2),hy+i,hl);HB.px(hx+rx+wd+.3+fl*(i/len)-((i/2)%2),hy+i,hl);}}
@@ -2577,7 +2582,7 @@ function drawBody(G,P,cs){
   J.mouth=[hx+ex,my];J.r=[rx,ry];return J;}
 
 /* figura en su propia capa: el borde de la ropa oscura se ilumina y se separa del fondo con un filo apagado */
-function stamp(G,P,cs){const F=new Grid();const J=drawBody(F,P,cs);const f=F.g,g=G.g;
+let _SF=null,_HB=null;function stamp(G,P,cs){const F=_SF||(_SF=new Grid());F.g.fill(0);const J=drawBody(F,P,cs);const f=F.g,g=G.g;
   for(let i=0;i<W*H;i++){if(!f[i])continue;const x=i%W;const edge=x===0||x===W-1||!f[i-1]||!f[i+1]||!f[i-W]||!f[i+W];g[i]=(edge&&f[i]===1)?2:f[i];}
   for(let i=W;i<W*(H-1);i++){if(f[i])continue;if(f[i-1]||f[i+1]||f[i-W]||f[i+W]){if(g[i]===1)g[i]=0;}}
   return J;}
@@ -3584,7 +3589,7 @@ return {Grid,SCENES,CHAR,PICK};
 class GalShow{
   constructor(kind){this.kind=kind;this.list=GAL.SCENES.filter(s=>s.arch===kind);this.strums=[{start:0}];this.last=-1;this.sc=null;this.prev='';this.g=new Uint8Array(3520);}
   pickScene(){const L=this.list;let s=L[Math.floor(Math.random()*L.length)];if(L.length>1&&s.id===this.prev)s=L[(L.indexOf(s)+1+Math.floor(Math.random()*(L.length-1)))%L.length];this.prev=s.id;
-    try{this.sc=s.make();const n=10+Math.floor(Math.random()*50);for(let i=0;i<n;i++)this.step();}catch(e){this.sc=null;}}
+    try{this.sc=s.make();const n=2+Math.floor(Math.random()*6);for(let i=0;i<n;i++)this.step();}catch(e){this.sc=null;}}
   step(){if(!this.sc)return;const G=new GAL.Grid();try{this.sc.draw(G);this.g=G.g;}catch(e){}}
   frame(F){if(!this.sc||F<this.last||(F===0&&this.last>0)){this.pickScene();this.last=F;return{g:this.g};}
     let n=Math.min(4,F-this.last);while(n-->0)this.step();this.last=F;return{g:this.g};}
@@ -3842,7 +3847,8 @@ const KIND_RE={
 /* emisoras del coche: se reparten las canciones por artista (y por género si el archivo lo trae) */
 const RADIO_RE={
   fito:/\bfito\b|fitipaldis|platero/,
-  hit:/dua lipa|taylor swift|ed sheeran|the weeknd|harry styles|bruno mars|coldplay|imagine dragons|maroon 5|katy perry|lady gaga|ariana|billie eilish|olivia rodrigo|sabrina carpenter|miley|shakira|aitana|alboran|yatra|lola indigo|ana mena|bisbal|alejandro sanz|manuel turizo|\bcamilo\b|\bmorat\b|melendi|estopa|vanesa martin|abraham mateo|calvin harris|david guetta|avicii|\bkygo\b|rihanna|beyonce|justin bieber|charlie puth|shawn mendes|lewis capaldi|sam smith|\badele\b|doja cat|\blizzo\b|chappell roan|benson boone|teddy swims|tate mcrae|rosalia|\bsia\b|ava max|ellie goulding|zara larsson|post malone|marshmello|alan walker|the chainsmokers|one republic|onerepublic|pitbull|enrique iglesias|ricky martin|marc anthony|carlos vives|juanes|\bsting\b|ed maverick|myke towers.*shakira|bebe rexha|anne-marie|rita ora|jonas brothers|\blauv\b|khalid|halsey|\bpink\b|selena gomez|demi lovato|camila cabello|meghan trainor|jason derulo|\bavril\b|blanca paloma|chanel|amaia|ana guerra|cepeda|dani fernandez|nil moliner|izal|vetusta morla|love of lesbian|sidonie|la oreja de van gogh|el canto del loco|dani martin/,
+  hit:/dua lipa|taylor swift|ed sheeran|the weeknd|harry styles|bruno mars|coldplay|imagine dragons|maroon 5|katy perry|lady gaga|ariana|billie eilish|olivia rodrigo|sabrina carpenter|miley|rihanna|beyonce|justin bieber|charlie puth|shawn mendes|lewis capaldi|sam smith|\badele\b|doja cat|\blizzo\b|chappell roan|benson boone|teddy swims|tate mcrae|\bsia\b|ava max|ellie goulding|zara larsson|post malone|marshmello|alan walker|the chainsmokers|one ?republic|pitbull|bebe rexha|anne-marie|rita ora|jonas brothers|\blauv\b|khalid|halsey|\bp!?nk\b|selena gomez|demi lovato|camila cabello|meghan trainor|jason derulo|calvin harris|david guetta|avicii|\bkygo\b|tiesto|martin garrix|\bmeduza\b|lost frequencies|robin schulz|felix jaehn|jonas blue|purple disco machine|sophie and the giants|\bhugel\b|\balok\b|\banotr\b|fred again|jax jones|becky hill|\braye\b|myles smith|noah kahan|gracie abrams|lola young|alex warren|\bsombr\b|olivia dean|katseye|\brose\b|\bjennie\b|\blisa\b|\bblackpink\b|\bbts\b|\bjung ?kook\b|tones and i|calum scott|james arthur|kylie minogue|dua|\bcharli xcx\b|\btroye sivan\b|\bconan gray\b|\bglass animals\b|\bthe kid laroi\b|\bshaboozey\b|\bhozier\b|\bmark ambor\b|\bdjo\b|\bcyril\b|\bcalvin\b|\bsigala\b|\bclean bandit\b|\brudimental\b|\bmabel\b|\bdua lipa\b|\bjess glynne\b|\bkesha\b|\bflo rida\b|\bowl city\b|\bfoster the people\b|\bportugal\. the man\b|\bweeknd\b|\bsza\b|\bmiguel\b|\bmaneskin\b|\bloreen\b|\bmans zelmerlow\b|\bduncan laurence\b|\bnathan evans\b|\bariana grande\b|\btaylor\b-x|\bstromae\b|\bmika\b|\bsean paul\b|\bdaddy\b-x|\bimanbek\b|\bsaint jhn\b|\bina wroldsen\b|\btiesto\b|\bkungs\b|\bbob sinclar\b|\bklangkarussell\b/,
+  hitEs:/aitana|lola indigo|ana mena|shakira|karol g|sebastian yatra|abraham mateo|ana guerra|\bmaluma\b|enrique iglesias|ricky martin|\bbelinda\b|\bchanel\b|blanca paloma|\bmalu\b-x|\bcarlos baute\b|\bmarta santos\b|\bvicco\b|\bede\b|\bmelody\b|\bnebulossa\b|\brosa linn\b|\bomar montes\b-x|\bmanuel turizo\b|\bcamilo\b|\bmorat\b|\breik\b|\bcnco\b|\bprince royce\b|\bnatti natasha\b|\bbecky g\b/,
   regg:/bad bunny|anuel|myke towers|quevedo|\bfeid\b|rauw|ozuna|balvin|daddy yankee|maluma|bizarrap|trueno|\bkhea\b|tiago pzk|lit killah|rels b|morad|jhay|\bmora\b|eladio|arcangel|de la ghetto|nicky jam|wisin|yandel|don omar|farruko|\bsech\b|tangana|bryant myers|nengo|ñengo|cosculluela|tego|plan b|zion|lunay|dalex|mike bahia|ryan castro|blessd|peso pluma|natanael|yung beef|kidd keo|saiko|omar montes|jc reyes|beny jr|\bemilia\b|\btini\b|maria becerra|nicki nicole|karol g|young miko|cazzu|anitta|natti natasha|becky g|duki|paulo londra|manuel turizo|sebastian yatra|\bcamilo\b|rvfv|lola indigo|bad gyal|la pantera|abhir|hens|\bdei v\b|\bjere klein\b|\bxavi\b|\bfuerza regida\b|grupo frontera|chencho|\bkevvo\b|alvaro diaz|jay wheeler|lenny tavarez|\bcris mj\b|\bclarent\b|\bluar la l\b|ovy on the drums|\bsky rompiendo\b|tainy|\bboza\b/,
   trap:/travis scott|\bfuture\b|young thug|lil baby|21 savage|\bdrake\b|metro boomin|playboi carti|lil uzi|\bmigos\b|\boffset\b|\bquavo\b|takeoff|\bgunna\b|juice wrld|xxxtentacion|lil durk|youngboy|don toliver|roddy ricch|pop smoke|lil wayne|kanye|\bye\b|kendrick|j\.? cole|a\$ap|asap rocky|tyler,? the creator|lil nas|megan thee stallion|cardi b|nicki minaj|central cee|kodak black|\bpolo g\b|lil tecca|trippie redd|ski mask|6ix9ine|tekashi|\byeat\b|ken carson|destroy lonely|moneybagg|rod wave|lil yachty|2 chainz|gucci mane|young nudy|\bnav\b|swae lee|rae sremmurd|chief keef|lil skies|suicideboy|lil pump|\bdababy\b|jack harlow|\bmetro\b|\bglorilla\b|ice spice|\bsza\b|\bfuture\b|\bpartynextdoor\b|\bbig sean\b|\btravis\b|\bnle choppa\b|\blil peep\b|\bdenzel curry\b|\bjid\b|\b50 cent\b|\beminem\b|\bsnoop\b|\bdr\.? dre\b/
 };
@@ -3874,6 +3880,37 @@ function temaDia(){const day=DIA_KEY(),sig=S.tracks.size;if(diaCache.day===day&&
   diaCache={day,sig,t};return t;}
 function temaMatch(t,th){const a=norm(t.a||''),g=norm(t.g||'');if(th.re.test(a))return true;if(th.g&&th.g.test(g))return true;
   if(th.y&&t.y){const y=parseInt(t.y,10);if(y>=th.y[0]&&y<=th.y[1]&&/pop|rock|disco|new wave/.test(g))return true;}return false;}
+/* idioma por el título (para no mezclar inglés y español en la radio) */
+const ES_W=/\b(el|la|los|las|que|de|del|mi|tu|te|me|se|no|y|con|por|para|una|un|amor|corazon|vida|noche|quiero|eres|soy|sin|como|cuando|donde|todo|nada|baila|bebe|mami|papi|contigo|ti|yo|ella|mas|pero|hoy|siempre|nunca|otra|vez|loco|loca|dime|tengo|vamos)\b|[ñ¿¡]|[áéíóú]/;
+const EN_W=/\b(the|you|your|i|i'm|im|me|my|love|baby|don't|dont|it's|its|in|of|to|we|on|all|what|this|that|be|so|night|heart|go|get|just|like|want|need|feel|know|never|time|way|got|can't|cant|don't|girl|boy|tonight|say|yeah|oh|with|for)\b/;
+function langOf(t){if(t._lg!==undefined)return t._lg;const s=' '+norm(String(t.t||'')).replace(/[^a-z0-9' ]/g,' ')+' ',raw=String(t.t||'').toLowerCase();
+  let es=(s.match(new RegExp(ES_W.source,'g'))||[]).length*2+(/[ñ¿¡áéíóú]/.test(raw)?2:0)+(s.match(/cion\b|dad\b|mente\b|ito\b|ita\b|illo\b|[aei]r\b|ll|rr|\bmi\b/g)||[]).length*.6;
+  let en=(s.match(new RegExp(EN_W.source,'g'))||[]).length*2+(s.match(/th|wh|sh|ck|ing\b|'s\b|w|k|y\b|ee|oo|ght/g)||[]).length*.6;
+  const a=norm(t.a||'');if(RADIO_RE.hit.test(a)||RADIO_RE.trap.test(a))en+=1.5;else if(RADIO_RE.regg.test(a)||RADIO_RE.popes.test(a)||RADIO_RE.rockes.test(a)||RADIO_RE.fito.test(a)||RADIO_RE.hitEs.test(a)||KIND_RE.barrio.test(a))es+=1.5;
+  return t._lg=es>en+.5?'es':en>es+.5?'en':null;}
+function dateOf(t){const y=parseInt(t.y,10);if(y>1950&&y<2100)return y+.5;const m=t.m?Date.parse(t.m):0;if(m>0)return 1970+m/31557600000;return t.ad?1970+t.ad/31557600000:null;}
+/* gusto: lo que escuchas entero suma y lo que saltas resta (se guarda en este aparato) */
+const TASTE=(()=>{let o=null;try{o=JSON.parse(localStorage.getItem('gu_taste')||'null');}catch{}return o&&o.p?o:{p:{},s:{}};})();
+let tasteT=0;function noteTaste(t,secs){if(!t||t.test)return;const full=secs>=60||(t.du&&secs>=t.du*.6);
+  if(full)TASTE.p[t.id]=(TASTE.p[t.id]||0)+1;else if(secs<20&&!(t.du&&t.du<40))TASTE.s[t.id]=(TASTE.s[t.id]||0)+1;else return;
+  clearTimeout(tasteT);tasteT=setTimeout(()=>{try{localStorage.setItem('gu_taste',JSON.stringify(TASTE));}catch{}},4000);}
+function tasteW(id){const p=TASTE.p[id]||0,k=TASTE.s[id]||0;let w=1+Math.min(p,12)*.06;if(k>p)w*=Math.max(.2,1-.22*(k-p));if(S.likes[id])w*=1.4;return w;}
+/* programación de emisora: como una radio de verdad. Lo nuevo suena más (en HIT FM mucho más), nunca el mismo artista seguido
+   y una canción no se repite hasta que han pasado bastantes. */
+const ROT={hit:[4,2.2,1,.35],divas:[2.4,1.6,1,.6],regg:[2.4,1.6,1,.6],trap:[2.4,1.6,1,.6]};
+function radioOrder(key,ids,avoid){ids=[...new Set(ids)].filter(id=>S.tracks.get(id));const N=ids.length;if(N<3)return shuffleArr(ids);
+  const kind=key.startsWith('rad:')?key.slice(4):key,prof=ROT[kind]||[1.25,1.1,1,.9];
+  const tr=ids.map(id=>S.tracks.get(id)),dts=tr.map(t=>dateOf(t)??0),ord=ids.map((_,i)=>i).sort((a,b)=>dts[b]-dts[a]);
+  const w=new Float64Array(N);ord.forEach((i,r)=>{const q=r/N;w[i]=(q<.15?prof[0]:q<.4?prof[1]:q<.75?prof[2]:prof[3])*tasteW(ids[i]);});
+  const art=tr.map(t=>norm(t.aa||t.a||'?')),nArt=new Set(art).size;
+  const L=Math.min(260,Math.max(N,40)),gapS=Math.min(N-1,Math.max(12,Math.floor(N*.55))),gapA=Math.min(4,nArt-1);
+  const last=new Int32Array(N).fill(-1e6),lastA=new Map(),out=[];
+  if(avoid){let k=-1;for(const id of [...avoid].slice(-gapS)){const i=ids.indexOf(id);if(i>=0)last[i]=k;k--;}}
+  for(let pos=0;pos<L;pos++){let tot=0;const ok=[];
+    for(let pass=0;pass<3&&!ok.length;pass++)for(let i=0;i<N;i++){if(pos-last[i]<=(pass===2?1:gapS))continue;if(pass===0&&pos-(lastA.get(art[i])??-1e6)<=gapA)continue;ok.push(i);}
+    for(const i of ok)tot+=w[i];let r=Math.random()*tot,pick=ok[ok.length-1];for(const i of ok){r-=w[i];if(r<=0){pick=i;break;}}
+    out.push(ids[pick]);last[pick]=pos;lastA.set(art[pick],pos);}
+  return out;}
 function capArtists(ids,caps,def){const by=new Map();for(const id of ids){const t=S.tracks.get(id);const a=norm(t.a||'');let key=a,cap=def;for(const [re,c] of caps)if(re.test(a)){cap=c;key=re.source;break;}
   if(!by.has(key))by.set(key,{cap,ids:[]});by.get(key).ids.push(id);}
   const out=[];for(const {cap,ids:L} of by.values()){const sh=shuffleArr(L.slice());out.push(...sh.slice(0,cap));}return out;}
@@ -3897,7 +3934,12 @@ function radioKind(t,k){const a=norm(t.a||''),g=norm(t.g||'');if(k==='fito')retu
   if(k==='divas')return RADIO_RE.divas.test(a)||/carita triste/.test(norm(t.t||''));
   if(k==='popes')return RADIO_RE.popes.test(a);
   if(k==='rockes')return RADIO_RE.rockes.test(a)&&!/fitipaldis/.test(a)||(/rock/.test(g)&&/espa|spanish|urbano|rock y pop/.test(g)&&!/fitipaldis/.test(a));
-  if(k==='dia')return temaMatch(t,temaDia());const tg=artTag(t);if(tg&&(tg.e.length||tg.s.length))return tg.e.includes(k);if(RADIO_RE[k].test(a))return true;
+  if(k==='dia')return temaMatch(t,temaDia());
+  if(k==='hit'){if(RADIO_RE.hit.test(a)||RADIO_RE.hitEs.test(a))return true;
+    if(RADIO_RE.fito.test(a)||RADIO_RE.regg.test(a)||RADIO_RE.trap.test(a)||RADIO_RE.popes.test(a)||RADIO_RE.rockes.test(a)||KIND_RE.rock.test(a)||KIND_RE.barrio.test(a)||KIND_RE.pijo.test(a))return false;
+    const tg=artTag(t);if(tg&&(tg.e.length||tg.s.length))return tg.e.includes('hit')&&!tg.s.some(x=>/espanol|spanish|latin|flamenc|rumba|cantautor|indie|rock|copla|balada/.test(x))&&langOf(t)!=='es';
+    return /\bpop\b|dance|edm|electro|house/.test(g)&&!/latin|espa|rock|metal|punk|flamenc|rumba|indie|cantautor|reggaet|urbano/.test(g)&&langOf(t)!=='es';}
+  const tg=artTag(t);if(tg&&(tg.e.length||tg.s.length))return tg.e.includes(k);if(RADIO_RE[k].test(a))return true;
   if(k==='regg')return /reggaet|regueton|urbano latino|dembow|latin trap|latin urban|perreo/.test(g);
   if(k==='trap')return /\btrap\b|hip.?hop|\brap\b/.test(g)&&!/latin|espa|urbano|reggaet/.test(g)&&!RADIO_RE.regg.test(a);
   if(k==='hit')return /\bpop\b|dance|edm|electro.?pop/.test(g)&&!/rock|metal|punk/.test(g);return false;}
@@ -3905,9 +3947,10 @@ let radioCache={sig:'',m:{}};
 function radioIds(k){const sig=S.tracks.size+':'+S.allIds.length+':'+DIA_KEY();if(radioCache.sig!==sig)radioCache={sig,m:{}};if(radioCache.m[k])return radioCache.m[k];
   let ids=S.allIds.filter(id=>{const t=S.tracks.get(id);return t&&radioKind(t,k);});
   if(k==='rockes')ids=capArtists(ids,[[/\bmarea\b|\bkutxi\b/,1e9],[/platero/,4],[/extremoduro|\brobe\b/,30]],15); // que mande Marea y Platero apenas salga
-  if(k==='hit'){ // y lo último que has metido que no sea de otra emisora: los éxitos nuevos que estás escuchando
-    const other=t=>radioKind(t,'fito')||radioKind(t,'regg')||radioKind(t,'trap')||/rock|metal|punk/.test(norm(t.g||''))||KIND_RE.rock.test(norm(t.a||''));
-    const have=new Set(ids),fresh=S.allIds.map(id=>S.tracks.get(id)).filter(t=>t&&!have.has(t.id)&&!other(t)).sort((x,y)=>(y.ad||0)-(x.ad||0)).slice(0,40).map(t=>t.id);ids=ids.concat(fresh);}
+  if(k==='hit'){ // radiofórmula: lo de los últimos años manda; nada de antes de 2008 salvo lo que te guste; pocos artistas españoles
+    ids=ids.filter(id=>{const t=S.tracks.get(id),y=parseInt(t.y,10);return !(y>1900&&y<2008)||S.likes[id];});
+    ids=capArtists(ids,[[RADIO_RE.hitEs,5]],14);}
+  if(k==='divas'||k==='popes'||k==='regg'||k==='trap')ids=capArtists(ids,[],k==='popes'?18:24);
   return radioCache.m[k]=ids;}
 function carKind(t){if(!t)return null;const a=norm(t.a||''),g=norm(t.g||'');
   if(KIND_RE.fito.test(a))return 'fito';if(KIND_RE.diva.test(a))return 'diva';if(RADIO_RE.trap.test(a))return 'trap';
