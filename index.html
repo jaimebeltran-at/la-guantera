@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111214">
-<link rel="manifest" href="manifest.webmanifest">
+<script>/* tres apps separadas: ?m=coche, ?m=ordenador o ?m=movil (o coche.html, ordenador.html, movil.html). Cada una abre siempre en su modo. */
+window.FORCE=({coche:'car',ordenador:'pc',pc:'pc',movil:'phone'})[new URLSearchParams(location.search).get('m')]||null;
+document.write('<link rel="manifest" href="'+(FORCE==='car'?'manifest-coche.webmanifest':FORCE==='pc'?'manifest-ordenador.webmanifest':FORCE==='phone'?'manifest-movil.webmanifest':'manifest.webmanifest')+'">');</script>
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -820,7 +822,7 @@ function go(v){if(!VIEWS.includes(v))v='inicio';closeNp();closeLayer();if(typeof
   S.view=v;S.stack=[];try{if(location.hash!=='#'+v)history.replaceState(null,'','#'+v);}catch{}renderNav();renderView(true);$('#main').scrollTop=0;}
 function openDetail(d){S.stack.push(d);closeLayer();if(document.body.classList.contains('carmode'))carOff();closeNp();renderView(true);$('#main').scrollTop=0;}
 function back(){S.stack.pop();renderView(true);}
-addEventListener('hashchange',()=>{const v=location.hash.slice(1);if(v==='coche'){carOn();return;}if(v==='pc'||v==='ordenador'){pcOn();return;}if(typeof PC!=='undefined'&&PC.on)pcOff();if(VIEWS.includes(v)&&v!==S.view){S.view=v;S.stack=[];renderNav();renderView(true);}});
+addEventListener('hashchange',()=>{const v=location.hash.slice(1);if(v==='coche'){if(!FORCE||FORCE==='car')carOn();return;}if(v==='pc'||v==='ordenador'){if(!FORCE||FORCE==='pc')pcOn();return;}if(typeof PC!=='undefined'&&PC.on)pcOff();if(VIEWS.includes(v)&&v!==S.view){S.view=v;S.stack=[];renderNav();renderView(true);}});
 
 function renderNav(){const nav=$('#nav');nav.textContent='';
   for(const [v,nm,icn] of NAV)nav.append(h('button',{class:S.view===v&&!S.stack.length?'on':'','data-act':'go','data-v':v},ic(icn),nm));
@@ -1202,6 +1204,10 @@ function openEq(){const g=AE.gains();
 /* modo coche */
 const carBtn=(act,icon,label)=>h('button',{class:'pbtn','data-act':act,'aria-label':label},ic(icon));
 function goFull(){if(typeof SIM!=='undefined'&&SIM)return;try{const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen({navigationUI:'hide'}).catch(()=>{});}catch{}}
+function forceBack(){let b=document.getElementById('forceBack');const off=FORCE&&((FORCE==='car'&&!document.body.classList.contains('carmode'))||(FORCE==='pc'&&!(typeof PC!=='undefined'&&PC.on)));
+  if(!off){if(b)b.hidden=true;return;}if(!b){b=document.createElement('button');b.id='forceBack';b.style.cssText='position:fixed;z-index:9999;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));padding:14px 20px;border:0;border-radius:999px;background:#ff8a1f;color:#140802;font:700 16px system-ui;box-shadow:0 6px 20px rgba(0,0,0,.5)';
+    b.onclick=()=>{FORCE==='car'?carOn():pcOn();};document.body.append(b);}b.textContent=FORCE==='car'?'‹ Volver al coche':'‹ Volver a La Guantera';b.hidden=false;}
+setInterval(()=>{if(window.FORCE&&FORCE!=='phone')forceBack();},700);
 function carOn(){if(typeof PC!=='undefined'&&PC.on)pcOff();LS.set('lastMode','car');document.body.classList.add('carmode');if(!prefs.fx||!(prefs.xf>0)){prefs.fx=true;if(!(prefs.xf>0))prefs.xf=4;try{savePrefs();}catch{}}goFull();if(!window.__gf){window.__gf=1;['pointerup','click','touchend','keydown'].forEach(e=>document.addEventListener(e,()=>{if(document.body.classList.contains('carmode'))goFull();},{capture:true,passive:true}));}closeNp();closeLayer();$('#car').hidden=false;$('#app').setAttribute('aria-hidden','true');renderCar();wake();
   try{history.replaceState(null,'','#coche');}catch{}}
 function carOff(){LS.set('lastMode','app');document.body.classList.remove('carmode');if(typeof CAR!=='undefined'&&CAR){try{CAR.unmount();}catch(e){}CAR=null;}$('#car').hidden=true;$('#car').textContent='';$('#app').removeAttribute('aria-hidden');
@@ -1600,11 +1606,12 @@ async function boot(){try{document.documentElement.style.setProperty('--wood-img
   if(!device){device={id:rid(8),kind:guessKind()};device.name=KIND[device.kind].name;LS.set('dev',device);S.firstRun=true;}
   const hv=location.hash.slice(1);if(VIEWS.includes(hv))S.view=hv;
   renderNav();renderView(true);renderPlayer(true);renderDials();renderPresets();requestAnimationFrame(specLoop);
-  if(hv==='pc'||hv==='ordenador'||(!hv&&LS.get('pcStart',0)&&!prefs.carStart))setTimeout(pcOn,0);else if(hv==='coche'||prefs.carStart||(S.firstRun&&device.kind==='car')||(!hv&&LS.get('lastMode','')==='car'&&matchMedia('(display-mode: fullscreen),(display-mode: standalone)').matches))carOn(); // instalada en la tablet: abre directa en el coche
+  if(FORCE){if(S.firstRun){device.kind=FORCE;device.name=KIND[FORCE]?KIND[FORCE].name:device.name;LS.set('dev',device);}if(FORCE==='pc')setTimeout(pcOn,0);else if(FORCE==='car')carOn();}
+  else if(hv==='pc'||hv==='ordenador'||(!hv&&LS.get('pcStart',0)&&!prefs.carStart))setTimeout(pcOn,0);else if(hv==='coche'||prefs.carStart||(S.firstRun&&device.kind==='car')||(!hv&&LS.get('lastMode','')==='car'&&matchMedia('(display-mode: fullscreen),(display-mode: standalone)').matches))carOn(); // instalada en la tablet: abre directa en el coche
   await Promise.all([SY.loadLocal(),LIB.loadLocal()]);
   try{const st=await IDB.get('kv','stats');if(st&&st.ym===ym()&&st.dev===device.id){S.stats=st;S.statsId=statsName();}}catch{}
   DL.init();renderAll();if(AUTH.ok())onAuth();
-  if(S.firstRun&&!SIM&&!DEMO)setTimeout(firstRunSheet,700);if(SIM)simInit();if(DEMO)demoLib();if(new URLSearchParams(location.search).has('medir'))medir();
+  if(S.firstRun&&!SIM&&!DEMO&&!FORCE)setTimeout(firstRunSheet,700);if(SIM)simInit();if(DEMO)demoLib();if(new URLSearchParams(location.search).has('medir'))medir();
   if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});}
 </script>
 <!--CAR2--><template id="carTpl"><style>
@@ -2363,7 +2370,7 @@ class Component extends DCLogic {
       fn: () => this.cycle() };
     const lk = st.likeK || 0;
     const fk = st.fk || 0, flip = st.flip || null, nb = '   ';
-    const menuItems = ['› BUSCAR', 'LISTAS', 'ARTISTAS', 'ÁLBUMES', 'CLAUDE DJ', 'SONIDO', 'SALIR DEL COCHE', '‹ VOLVER'].map((lb, k) => ({ lb, cls: k === 0 ? 'sel' : '', fn: () => this.menuDo(k) }));
+    const menuItems = ['› BUSCAR', 'LISTAS', 'ARTISTAS', 'ÁLBUMES', 'CLAUDE DJ', 'SONIDO', FORCE==='car'?'AJUSTES':'SALIR DEL COCHE', '‹ VOLVER'].map((lb, k) => ({ lb, cls: k === 0 ? 'sel' : '', fn: () => this.menuDo(k) }));
     const tS = c => FL.t0 + c * FL.st, tL = c => tS(c) + FL.d * FL.land;
     const hd = this.dayStr() + nb + String(new Date().getHours()).padStart(2, '0') + ':' + String(new Date().getMinutes()).padStart(2, '0');
     let dj = null;
@@ -4101,7 +4108,7 @@ class CarUI extends Component{
     const ids=collIds(s.key);if(!ids.length){this.say(!S.tracks.size?'SIN MÚSICA TODAVÍA':s.key==='likes'?'SIN FAVORITOS · DOS TOQUES EN LA PORTADA':(s.full||s.n)+' · SIN CANCIONES AÚN');return;}
     clearTimeout(this.cyT);prefs.radio=false;P.radioSeed=null;this.radioLb='';P.repeat='off';this.applied='shuf';this.prevMode='shuf';LS.set('carMode','shuf');this.setState({mode:'shuf'});
     LS.set('carStn',s.key);P.play(ids,-1,s.key,{shuffle:true});this.say('EMISORA '+s.f+' Hz · '+(s.full||s.n));}
-  menuDo(k){const acts=[()=>{carOff();go('buscar');},()=>carLib('pl'),()=>carLib('ar'),()=>carLib('al'),()=>this.djStart(),()=>openEq(),()=>carOff()];
+  menuDo(k){const acts=[()=>{carOff();go('buscar');},()=>carLib('pl'),()=>carLib('ar'),()=>carLib('al'),()=>this.djStart(),()=>openEq(),()=>{carOff();if(FORCE==='car')go('ajustes');}];
     if(k===7){this.closeScr('');return;}this.closeScr('');setTimeout(()=>{try{acts[k]();}catch(e){console.warn(e);}},FL.total+80);}
   /* ----- Claude DJ por voz ----- */
   djStart(){if(this.state.flip||this.state.scr)return;
