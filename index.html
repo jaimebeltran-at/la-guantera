@@ -383,7 +383,7 @@ body.carmode>#app,body.carmode>#np{display:none!important}
       <div class="right">
         <div class="presets" id="deckPresets"></div>
         <button class="ibtn" data-act="openEq" aria-label="Ecualizador"><svg class="i"><use href="#i-eq"/></svg></button>
-        <button class="ibtn" data-act="openQueue" aria-label="Cola"><svg class="i"><use href="#i-queue"/></svg></button>
+        <button class="ibtn" data-k="devbtn" data-act="openDevices" aria-label="Aparatos"><svg class="i"><use href="#i-cast"></use></svg></button><button class="ibtn" data-act="openQueue" aria-label="Cola"><svg class="i"><use href="#i-queue"/></svg></button>
         <div class="knob" data-knob title="Volumen" role="slider" aria-label="Volumen" tabindex="0"><i></i></div>
       </div>
     </div>
@@ -563,6 +563,23 @@ const SY={lists:{},likes:{},pending:new Set(),lastPull:0,
     catch(e){this.pending.add(kind);}}};
 function plWrite(id,val){const now=Date.now();if(val===null)SY.lists[id]={del:true,up:now};else SY.lists[id]=Object.assign({},SY.lists[id]&&!SY.lists[id].del?SY.lists[id]:{},val,{up:now});
   SY.push('lists');renderSoon();DL.sync();return Promise.resolve();}
+function isFav(k){return S.likes['fw:'+k]>0;}
+function toggleFav(k){const on=!isFav(k);SY.likes['fw:'+k]=on?Date.now():-Date.now();SY.push('likes');toast(on?'Guardado en tu biblioteca':'Quitado de tu biblioteca');renderSoon();try{if(PC.on){pcRenderLib();pcRenderMain(true);}}catch{}}
+const favKeys=pre=>Object.entries(S.likes).filter(([k,v])=>v>0&&k.startsWith('fw:'+pre)).sort((a,b)=>b[1]-a[1]).map(([k])=>k.slice(3+pre.length));
+/* votos de emisora: deslizar la carátula del coche arriba (encaja) o abajo (no encaja) */
+let FBV=0,fbIdx=null;
+function fbIndex(){if(fbIdx&&fbIdx.v===FBV&&fbIdx.n===Object.keys(S.likes).length)return fbIdx;const o={v:FBV,n:Object.keys(S.likes).length,up:{},down:{}};
+  for(const [k,v] of Object.entries(S.likes)){if(!(v>0))continue;const m=k.match(/^f([ud]):(.+)\|(.+)$/);if(!m)continue;const tgt=m[1]==='u'?o.up:o.down;(tgt[m[2]]=tgt[m[2]]||new Set()).add(m[3]);}
+  return fbIdx=o;}
+const fbOf=key=>{const I=fbIndex();return{up:I.up[key]||new Set(),down:I.down[key]||new Set()};};
+function fbContext(){const src=P.src||'';if(/^rad:|^likes$/.test(src)){const st=PC.ST.find(x=>x.key===src);return{key:src,name:st?st.full:'LA EMISORA'};}
+  const seed=P.radioSeed||(src.startsWith('tr:')?getTrack(src.slice(3)):null);if((src==='radio'||src.startsWith('tr:')||prefs.radio)&&seed)return{key:'ra:'+seed.arId,name:'LA RADIO DE '+(seed.a||'').toUpperCase()};return null;}
+function stnVote(v,t=P.current){if(!t||t.test)return{msg:'NADA QUE VOTAR'};const c=fbContext();if(!c)return{msg:'VOTA EN UNA EMISORA O EN UNA RADIO'};
+  const up='fu:'+c.key+'|'+t.id,dn='fd:'+c.key+'|'+t.id,now=Date.now();SY.likes[v>0?up:dn]=now;SY.likes[v>0?dn:up]=-now;SY.push('likes');FBV++;
+  return{ok:1,msg:v>0?'✓ ENCAJA EN '+c.name:'✗ FUERA DE '+c.name};}
+function votesText(){const I=fbIndex(),L=[];const nm=k=>{if(k.startsWith('ra:')){const R=S.artistById.get(k.slice(3));return 'Radio de '+(R?R.name:'?');}const st=PC.ST.find(x=>x.key===k);return st?st.full:k;};
+  for(const k of new Set([...Object.keys(I.up),...Object.keys(I.down)])){L.push('## '+nm(k));for(const [lab,set] of [['ENCAJAN',I.up[k]],['NO ENCAJAN',I.down[k]]]){if(!set||!set.size)continue;L.push(lab+':');for(const id of set){const t=getTrack(id);if(t)L.push('- '+(t.a||'?')+' — '+(t.t||'?'));}}L.push('');}
+  return L.join('\n')||'Todavía no has votado ninguna canción.';}
 function toggleLike(id){if(!S.tracks.has(id))return;const on=!S.likes[id];SY.likes[id]=on?Date.now():-Date.now();SY.push('likes');updateLikeUI();}
 function setCfg(patch){Object.assign(S.cfg,patch,{up:Date.now()});SY.push('cfg');}
 const likedIds=()=>Object.entries(S.likes).filter(([id])=>S.tracks.has(id)).sort((a,b)=>b[1]-a[1]).map(([id])=>id);
@@ -711,11 +728,11 @@ const P={q:[],orig:null,qi:-1,shuffle:false,repeat:'off',src:'',
 function vibeOf(t){const a=norm(t.a||''),g=norm(t.g||''),v=new Set();const tg=artTag(t);if(tg){tg.e.forEach(x=>v.add(x));tg.s.forEach(x=>v.add('s:'+x));}
   try{for(const k of ['fito','hit','regg','trap','divas','popes','rockes'])if(radioKind(t,k))v.add(k);}catch{}
   if(v.has('fito')||KIND_RE.rock.test(a)||/rock|metal|punk|grunge/.test(g))v.add('rock');return v;}
-function similarTo(t,n,ex,hint){if(!t||t.test||!S.tracks.size)return[];const mates=new Set();try{for(const pl of Object.values(S.playlists||{})){const ids=(pl&&pl.ids)||[];if(ids.includes(t.id))ids.forEach(i=>mates.add(i));}}catch{}const dec=t.y?Math.floor(parseInt(t.y,10)/10):null,tv=vibeOf(t),tg=t.g?norm(t.g):'',tl=langOf(t),td=dateOf(t);if(!tv.size&&hint)tv.add(hint);
+function similarTo(t,n,ex,hint){if(!t||t.test||!S.tracks.size)return[];const mates=new Set();try{for(const pl of Object.values(S.playlists||{})){const ids=(pl&&pl.ids)||[];if(ids.includes(t.id))ids.forEach(i=>mates.add(i));}}catch{}const rfb=fbOf('ra:'+t.arId),dec=t.y?Math.floor(parseInt(t.y,10)/10):null,tv=vibeOf(t),tg=t.g?norm(t.g):'',tl=langOf(t),td=dateOf(t);if(!tv.size&&hint)tv.add(hint);
   const score=x=>{const xv=vibeOf(x);let sh=0;for(const k of tv)if(xv.has(k))sh+=k[1]===':'?.5:1;
-    const xl=langOf(x),xd=dateOf(x),dy=td!=null&&xd!=null?Math.abs(td-xd):null;
+    if(rfb.down.has(x.id))return -99;const xl=langOf(x),xd=dateOf(x),dy=td!=null&&xd!=null?Math.abs(td-xd):null;
     return (x.arId===t.arId?2.4:0)+(mates.has(x.id)?2.5:0)+sh*3.2+(tv.size&&xv.size&&!sh?-4:0)+(tg&&x.g&&norm(x.g)===tg?2:0)+(dec!=null&&x.y&&Math.floor(parseInt(x.y,10)/10)===dec?1:0)
-      +(tl&&xl?(tl===xl?1.6:-2.2):0)+(dy==null?0:dy<2?1.3:dy<5?.6:dy>12?-1:0)+Math.log(tasteW(x.id))*2.2+Math.random()*1.4;};
+      +(tl&&xl?(tl===xl?1.6:-2.2):0)+(dy==null?0:dy<2?1.3:dy<5?.6:dy>12?-1:0)+Math.log(tasteW(x.id))*2.2+(rfb.up.has(x.id)?3:0)+Math.random()*1.4;};
   // solo lo que de verdad se parece (mismo rollo, artista o género); lo demás únicamente si no hay casi nada
   const rel=x=>{if(x.arId===t.arId||mates.has(x.id))return true;if(tg&&x.g&&norm(x.g)===tg)return true;const xv=vibeOf(x);let st=0;for(const k of tv)if(xv.has(k)){if(k[1]!==':')return true;if(++st>=2)return true;}return!tv.size&&!tg;};
   const every=[...S.tracks.values()].filter(x=>!x.test&&x.id!==t.id),goodAll=every.filter(rel),pool=(goodAll.length>=8?goodAll:every).filter(x=>!ex.has(x.id));
@@ -931,6 +948,7 @@ const ACT={
   openNp:()=>openNp(),closeNp:()=>closeNp(),openQueue:()=>openQueue(),openEq:()=>openEq(),openDevices:()=>openDevices(),
   carOn:()=>carOn(),carOff:()=>carOff(),
   soundTest:async()=>{await makeTests();P.play(collIds('test'),0,'test',{shuffle:false});},
+  favTog:el=>toggleFav(el.dataset.k),
   playStn:el=>{const k=el.dataset.k,ids=collIds(k),st=PC.ST.find(x=>x.key===k);if(!ids.length){toast((st?st.full:'Emisora')+': sin canciones aún');return;}prefs.radio=false;P.radioSeed=null;P.play(ids,-1,k,{shuffle:true});try{LS.set('carStn',k);}catch{}},
   resumeState:()=>resumeFromState(),
 };
@@ -1076,8 +1094,12 @@ function viewLibrary(v){const tab=S.libTab||'listas';
   if(tab==='descargas')return viewDownloads(v);
   if(!S.tracks.size&&tab!=='listas'){v.append(onboarding());return;}
   if(tab==='listas')v.append(h('div',null,h('button',{class:'pbtn','data-act':'newList'},ic('plus'),'Nueva lista')),h('div',{class:'grid'},likesCard(),...sortedLists().map(([id,p])=>listCard(id,p))));
-  else if(tab==='albumes')v.append(h('div',{class:'grid'},...S.albums.map(albumCard)));
-  else if(tab==='artistas')v.append(h('div',{class:'grid'},...S.artists.map(artistCard)));
+  else if(tab==='albumes'){const fv=favKeys('al:').map(id=>S.albumById.get(id)).filter(Boolean);
+    if(fv.length)v.append(h('div',{class:'sec'},secH('Guardados'),h('div',{class:'grid'},...fv.map(albumCard))));else v.append(h('div',{class:'note'},'Toca ♡ en un álbum para guardarlo aquí arriba.'));
+    v.append(h('div',{class:'sec'},secH('Todos tus álbumes'),h('div',{class:'grid'},...S.albums.map(albumCard))));}
+  else if(tab==='artistas'){const fv=favKeys('ar:').map(id=>S.artistById.get(id)).filter(Boolean);
+    if(fv.length)v.append(h('div',{class:'sec'},secH('Siguiendo'),h('div',{class:'grid'},...fv.map(artistCard))));else v.append(h('div',{class:'note'},'Toca ♡ en un artista para seguirlo y tenerlo aquí arriba.'));
+    v.append(h('div',{class:'sec'},secH('Todos tus artistas'),h('div',{class:'grid'},...S.artists.map(artistCard))));}
   else v.append(h('div',{class:'row'},h('button',{class:'pbtn amber','data-act':'playColl','data-k':'all'},ic('play'),'Reproducir'),
       h('button',{class:'pbtn','data-act':'shufColl','data-k':'all'},ic('shuffle'),'Aleatorio'),h('span',{class:'sub'},plural(S.allIds.length,'canción','canciones')+' · '+mins(sumDur(S.allIds)))),
     trackList(S.allIds,'all'));}
@@ -1115,6 +1137,7 @@ function viewDetail(v,d){v.append(h('div',null,h('button',{class:'pbtn ghost','d
     h('button',{class:'pbtn','data-act':'shufColl','data-k':key,disabled:!ids.length},ic('shuffle'),'Aleatorio'),
     d.t!=='test'&&S.dlOk?h('button',{class:'pbtn'+(pinned||full?' on':''),'data-act':'pin','data-k':key,disabled:!ids.length&&!pinned},ic(pinned||full?'check':'dl'),
       pinned&&!full?'Descargando '+dlc+'/'+ids.length:full?'Descargada':'Descargar'):null,
+    (d.t==='ar'||d.t==='al')?h('button',{class:'ibtn'+(isFav(key)?' on':''),'data-act':'favTog','data-k':key,'aria-label':isFav(key)?'Quitar de tu biblioteca':'Guardar en tu biblioteca',style:isFav(key)?'color:var(--amber)':''},ic(isFav(key)?'heartf':'heart')):null,
     d.t==='pl'?h('button',{class:'ibtn','data-act':'listMenu','data-id':d.id,'aria-label':'Opciones de la lista'},ic('more')):null);
   const info=h('div',{class:'info'},h('span',{class:'label'},kind),h('h1',null,title),h('span',{class:'sub'},sub),actions);
   if(d.t==='pl')info.append(h('div',{class:'row'},h('span',{class:'label'},'Emisora'),h('div',{class:'presets-pick'},
@@ -1221,7 +1244,7 @@ function openNp(){const np=$('#np');np.hidden=false;np.textContent='';
           h('button',{class:'ibtn','data-act':'next','aria-label':'Siguiente'},ic('next')),
           h('button',{class:'ibtn','data-act':'repeat','data-k':'rep','aria-label':'Repetir'},ic('repeat'),h('span',{class:'led'}))),
         h('div',{class:'np-row2'},h('button',{class:'pbtn','data-act':'like','data-k':'like'},ic('heart'),'Me gusta'),
-          h('button',{class:'pbtn','data-act':'openQueue'},ic('queue'),'Cola'),h('button',{class:'pbtn','data-act':'openEq'},ic('eq'),'Sonido'),
+          h('button',{class:'pbtn','data-act':'openQueue'},ic('queue'),'Cola'),h('button',{class:'pbtn','data-k':'devbtn','data-act':'openDevices'},ic('cast'),'Aparatos'),h('button',{class:'pbtn','data-act':'openEq'},ic('eq'),'Sonido'),
           h('button',{class:'pbtn','data-act':'go','data-v':'dj'},ic('dj'),'DJ')))));
   renderDials();renderPlayer(true);}
 function closeNp(){const np=$('#np');np.hidden=true;np.textContent='';}
@@ -1303,10 +1326,42 @@ function carLib(tab){const tabs=[['pl','Listas'],['al','Álbumes'],['ar','Artist
     h('button',{class:'ibtn',onclick:closeLayer,'aria-label':'Cerrar'},ic('close'))),list);}
 
 /* ===================== mando a distancia entre tus aparatos ===================== */
+/* Va por tu Drive: cada aparato deja su estado (qué suena, volumen…) en un archivito de la zona privada de la app
+   y mira cada pocos segundos el de los demás. Las órdenes se dejan en el archivito del aparato que manda la música. */
+const DR={files:{},pres:null,cbP:null,cbC:null,seen:+LS.get('drSeen',0)||0,busy:false,lastPoll:0,lastPush:0,peers:[],
+  num:new Set(['pos','dur','at','vol']),
+  async fid(name,init){if(this.files[name])return this.files[name];const id=await upload(name,new Blob([init||'{}'],{type:'application/json'}));this.files[name]=id;return id;},
+  presence(o){this.pres=o;clearTimeout(this.pt);this.pt=setTimeout(()=>this.push().catch(()=>{}),350);return Promise.resolve();},
+  async push(){if(!AUTH.ok()||!device||!this.pres)return;this.lastPush=Date.now();const ap={};for(const [k,v] of Object.entries(this.pres))if(v!=null)ap[k]=String(v).slice(0,90);
+    const name='gu-dev-'+device.id+'.json';try{const id=await this.fid(name);await gfetch(G+'/files/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({appProperties:ap})});}
+    catch(e){if(e&&e.status===404)delete this.files[name];}},
+  async poll(){if(this.busy||!AUTH.ok()||!device)return;this.busy=true;this.lastPoll=Date.now();
+    try{const j=await gjson('/files',{spaces:'appDataFolder',fields:'files(id,name,appProperties)',pageSize:200,q:"name contains 'gu-'"});const now=Date.now(),peers=[];let mine=null;
+      for(const f of j.files||[]){const m=f.name.match(/^gu-(dev|cmd)-(.+)\.json$/);if(!m)continue;if(!this.files[f.name])this.files[f.name]=f.id;const ap=f.appProperties||{};
+        if(m[1]==='dev'){const pr={};for(const [k,v] of Object.entries(ap))pr[k]=this.num.has(k)?+v:v==='true'?true:v==='false'?false:v;
+          if(m[2]===device.id)continue;if(!pr.at||now-pr.at>50000)continue;peers.push({peer:m[2],sameTab:false,kind:'viewer',isMe:true,presence:pr});}
+        else if(m[2]===device.id&&+(ap.seq||0)>this.seen)mine=f;}
+      peers.push({peer:device.id,sameTab:true,kind:'viewer',isMe:true,presence:this.pres||{}});this.peers=peers;S.myPeer=device.id;if(this.cbP)this.cbP({peers});
+      if(mine){try{const d=await(await gfetch(G+'/files/'+mine.id+'?alt=media')).json();const L=Array.isArray(d&&d.list)?d.list:d?[d]:[];
+        for(const c of L.sort((a,b)=>a.at-b.at)){if(!(c.at>this.seen))continue;this.seen=c.at;if(now-c.at<90000&&this.cbC)this.cbC({isMe:true,sameTab:false,data:c});}LS.set('drSeen',this.seen);}catch{}}}
+    catch(e){}finally{this.busy=false;}},
+  onPeers(cb){this.cbP=cb;},on(t,cb){if(t==='cmd')this.cbC=cb;},
+  sent:{},async emit(t,d){if(!AUTH.ok())throw{code:'no_auth'};const name='gu-cmd-'+d.to+'.json';let seq=Date.now();const L=(this.sent[d.to]=(this.sent[d.to]||[]).filter(c=>seq-c.at<60000));if(L.length&&seq<=L[L.length-1].at)seq=L[L.length-1].at+1;
+    L.push(Object.assign({},d,{at:seq}));const body=JSON.stringify({list:L.slice(-12)});
+    const fd=new FormData();fd.append('metadata',new Blob([JSON.stringify({appProperties:{seq:String(seq)}})],{type:'application/json'}));fd.append('file',new Blob([body],{type:'application/json'}));
+    let id=this.files[name];if(!id){await this.poll();id=this.files[name];}
+    if(id){try{await gfetch(GU+'/files/'+id+'?uploadType=multipart',{method:'PATCH',body:fd});}catch(e){if(e&&e.status===404){delete this.files[name];id=null;}else throw e;}}
+    if(!id){const f2=new FormData();f2.append('metadata',new Blob([JSON.stringify({name,parents:['appDataFolder'],appProperties:{seq:String(seq)}})],{type:'application/json'}));f2.append('file',new Blob([body],{type:'application/json'}));
+      this.files[name]=(await(await gfetch(GU+'/files?uploadType=multipart&fields=id',{method:'POST',body:f2})).json()).id;}
+    setTimeout(()=>this.poll(),1800);setTimeout(()=>this.poll(),3800);}};
+setInterval(()=>{if(!AUTH.ok()||!device||DEMO||SIM)return;if(!C.room){C.room=DR;initRoom();}
+  const now=Date.now(),others=DR.peers.some(p=>!p.sameTab),vis=!document.hidden,playing=P.current&&!AE.el.paused;
+  const every=S.ctrl?2000:(others&&vis)?3000:vis?8000:playing?6000:30000;if(now-DR.lastPoll>=every)DR.poll();
+  if(now-DR.lastPush>=(playing?12000:30000))presenceNow();},1000);
 function initRoom(){const R=C.room;
   R.onPeers(ch=>{S.peers=ch.peers.slice();const me=ch.peers.find(p=>p.sameTab);if(me)S.myPeer=me.peer;
     if(S.ctrl&&!S.peers.some(p=>p.peer===S.ctrl)){stopControl();toast('El otro aparato se ha desconectado');}
-    renderDevices();if(S.ctrl){renderPlayer();renderDials();}},()=>{});
+    renderDevices();if(S.ctrl){renderPlayer();renderDials();try{if(PC.on){pcTrack();pcVolUI();}}catch{}}},()=>{});
   R.on('cmd',msg=>{if(!msg.isMe||msg.sameTab)return;const d=msg.data||{};if(d.to!==S.myPeer)return;handleCmd(d);},()=>{});
   presenceNow();}
 const presenceSoon=debounce(()=>presenceNow(),400);
@@ -1318,8 +1373,8 @@ const ctrlName=()=>{const p=S.peers.find(x=>x.peer===S.ctrl);return p&&p.presenc
 function remoteCmd(d){if(!S.ctrl)return;sendCmd(S.ctrl,d);if(d.op==='play')toast('Enviado al '+(ctrlName()||'otro aparato'));}
 let ctrlTimer=0;
 function startControl(peer){S.ctrl=peer;const p=S.peers.find(x=>x.peer===peer);S.rvol=(p&&p.presence&&p.presence.vol)??.8;clearInterval(ctrlTimer);
-  ctrlTimer=setInterval(()=>updateTime(),1000);$$('[data-knob]').forEach(k=>k._upd&&k._upd());renderPlayer(true);renderDials();toast('Mandas en el '+(ctrlName()||'otro aparato'));}
-function stopControl(){S.ctrl=null;clearInterval(ctrlTimer);$$('[data-knob]').forEach(k=>k._upd&&k._upd());renderPlayer(true);renderDials();}
+  ctrlTimer=setInterval(()=>updateTime(),1000);$$('[data-knob]').forEach(k=>k._upd&&k._upd());renderPlayer(true);renderDials();try{if(PC.on){pcTrack();pcVolUI();}}catch{}toast('Mandas en el '+(ctrlName()||'otro aparato'));}
+function stopControl(){S.ctrl=null;clearInterval(ctrlTimer);$$('[data-knob]').forEach(k=>k._upd&&k._upd());renderPlayer(true);renderDials();try{if(PC.on){pcTrack();pcVolUI();}}catch{}}
 function takeOver(p){sendCmd(p.peer,{op:'handoff',from:S.myPeer});toast('Pasando la música a este aparato…');}
 function handleCmd(d){const ids=a=>(a||[]).filter(id=>S.tracks.has(id));
   switch(d.op){case 'play':P.play(ids(d.ids),d.start|0,d.src||'',d.sh===undefined?{}:{shuffle:!!d.sh});break;
@@ -1331,11 +1386,11 @@ function handleCmd(d){const ids=a=>(a||[]).filter(id=>S.tracks.has(id));
     case 'take':{const q=ids(d.q);if(q.length){P.shuffle=false;P.orig=q.slice();P.q=q;P.src=d.src||'';P.load(0,{pos:+d.pos||0});}break;}}}
 function openDevices(){openSheet(h('div',{class:'row'},h('h3',null,'Tus aparatos'),h('span',{class:'sp'}),h('button',{class:'ibtn',onclick:closeLayer,'aria-label':'Cerrar'},ic('close'))),h('div',{id:'devBox',class:'menu'}));renderDevices();}
 function renderDevices(){const box=$('#devBox');if(!box)return;box.textContent='';
-  if(!C.room||!device){box.append(h('div',{class:'note'},'El mando a distancia no está disponible en esta vista.'));return;}
+  if(!C.room||!device){box.append(h('div',{class:'note'},AUTH.ok()?'Buscando tus aparatos…':'Entra con tu cuenta de Google para manejar tus otros aparatos.'));if(AUTH.ok()&&!C.room){C.room=DR;initRoom();DR.poll();}return;}
   box.append(h('div',{class:'row',style:'min-height:52px;flex-wrap:nowrap'},ic(KIND[device.kind].icon),h('div',{style:'flex:1;min-width:0'},h('b',null,device.name+' (este)'),
     h('div',{class:'sub'},S.ctrl?'Estás manejando otro aparato':'La música suena aquí')),S.ctrl?h('button',{class:'pbtn',onclick:()=>{stopControl();renderDevices();}},'Volver a este'):null));
   const others=S.peers.filter(p=>!p.sameTab&&p.kind==='viewer'&&p.isMe&&p.presence&&p.presence.dev);
-  if(!others.length)box.append(h('div',{class:'note'},'Abre La Guantera en otro aparato, por ejemplo en el coche, y aparecerá aquí para manejarlo desde este.'));
+  if(!others.length)box.append(h('div',{class:'note'},'Abre La Guantera en otro aparato con la misma cuenta (el móvil, el ordenador o el coche) y aparecerá aquí en unos segundos para manejarlo desde este. Las órdenes tardan uno o dos segundos en llegar.'));
   for(const p of others){const pr=p.presence,t=getTrack(pr.tid),k=KIND[pr.dk]||KIND.pc;
     box.append(h('div',{class:'row',style:'min-height:60px;flex-wrap:nowrap'},ic(k.icon),
       h('div',{style:'flex:1;min-width:0'},h('b',null,pr.dn||k.name),h('div',{class:'sub',style:'white-space:nowrap;overflow:hidden;text-overflow:ellipsis'},
@@ -1499,6 +1554,8 @@ document.addEventListener('scroll',()=>{$('#tip').hidden=true;},true);
 
 /* ===================== ajustes ===================== */
 function viewSettings(v){v.append(h('h1',null,'Ajustes'));
+  v.append(h('div',{class:'sec'},secH('Tus votos de emisoras'),h('div',{class:'note'},'En el coche, desliza la carátula hacia arriba si la canción encaja en la emisora o en la radio, y hacia abajo si no encaja (se salta y no vuelve a salir ahí). Aquí puedes copiar todos tus votos para pasárselos a Claude.'),
+    h('div',{class:'row'},h('button',{class:'pbtn',onclick:async()=>{const tx=votesText();try{await navigator.clipboard.writeText(tx);toast('Votos copiados');}catch{openSheet(h('textarea',{style:'width:100%;height:60vh'},tx));}}},ic('list'),'Copiar mis votos'))));
   const nm=h('input',{type:'text',id:'devName',value:device?device.name:'',maxlength:'30',autocomplete:'off'});
   nm.addEventListener('change',()=>{const val=nm.value.trim();if(!val||!device)return;device.name=val;LS.set('dev',device);presenceNow();toast('Guardado');});
   v.append(h('div',{class:'sec'},secH('Este aparato'),h('div',{class:'row'},...Object.entries(KIND).map(([k,o])=>h('button',{class:'chip'+(device&&device.kind===k?' on':''),onclick:()=>{
@@ -1882,7 +1939,7 @@ button{-webkit-tap-highlight-color:transparent}
 .k1.cyc .tl{position:relative}
 .k1.cyc .tl.on::after,.djmic.on::after{content:"";position:absolute;left:2px;right:2px;top:50%;height:2px;margin-top:-1px;border-radius:1px;background:linear-gradient(90deg,#b0580c,#ff9c24 20%,#ffbc58 50%,#ff9c24 80%,#b0580c);box-shadow:0 0 3px #ff9d1f,0 0 8px rgba(255,157,31,.7),0 0 16px rgba(255,144,25,.3);opacity:var(--b0,1)}
 .k1.cyc .tl.on+span,.k1.cyc .trio>span.on{color:#ffc15c}
-.swipe{position:absolute;inset:0;cursor:grab;touch-action:pan-y}
+.swipe{position:absolute;inset:0;cursor:grab;touch-action:none}
 .krow>*:nth-child(2n) .lamp::after{opacity:var(--b3,1)}.krow>*:nth-child(2n) .kspill{animation-duration:4.7s}
 .krow>*:nth-child(3n) .lamp::after{opacity:var(--b3,1)}.krow>*:nth-child(3n) .kspill{animation-duration:5.3s}
 
@@ -2478,8 +2535,8 @@ class Component extends DCLogic {
       menuFn: () => { if (st.scr === 'menu') this.closeScr(''); else if (!st.scr) this.openScr('menu'); },
       djCls: 'k1 push' + (st.scr === 'dj' && st.djStep === 'listen' ? ' lit' : ''), djFn: () => this.djPress(),
       lrDownL: e => this.lrDown(-1, e), lrDownR: e => this.lrDown(1, e), lrUp: () => this.lrRelease(),
-      swDown: e => { try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) {} const r = e.currentTarget.getBoundingClientRect(); this.sw = { x: e.clientX, k: r.width / (exp ? 480 : 264) }; },
-      swUp: e => { const s0 = this.sw; this.sw = null; if (!s0) return; const dx = (e.clientX - s0.x) / s0.k; if (dx < -50) this.go(1); else if (dx > 50) this.go(-1); else if (Math.abs(dx) < 14) this.dblTap(); },
+      swDown: e => { try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) {} const r = e.currentTarget.getBoundingClientRect(); this.sw = { x: e.clientX, y: e.clientY, k: r.width / (exp ? 480 : 264) }; },
+      swUp: e => { const s0 = this.sw; this.sw = null; if (!s0) return; const dx = (e.clientX - s0.x) / s0.k, dy = (e.clientY - s0.y) / s0.k; if (Math.abs(dy) > 45 && Math.abs(dy) > Math.abs(dx) * 1.2) { this.vote(dy < 0 ? 1 : -1); return; } if (dx < -50) this.go(1); else if (dx > 50) this.go(-1); else if (Math.abs(dx) < 14) this.dblTap(); },
       infoTap: () => this.dblTap(),
       swCancel: () => { this.sw = null; },
       needleY: yOf(st.freq).toFixed(1), needleCls: 'needle' + (st.drag ? '' : ' snap'), spillCls: 'spill' + (st.drag ? '' : ' snap'), freqR: Math.round(st.freq),
@@ -4025,8 +4082,8 @@ function radioKind(t,k){const a=norm(t.a||''),g=norm(t.g||'');if(k==='fito')retu
   if(k==='trap')return /\btrap\b|hip.?hop|\brap\b/.test(g)&&!/latin|espa|urbano|reggaet/.test(g)&&!RADIO_RE.regg.test(a);
   if(k==='hit')return /\bpop\b|dance|edm|electro.?pop/.test(g)&&!/rock|metal|punk/.test(g);return false;}
 let radioCache={sig:'',m:{}};
-function radioIds(k){const sig=S.tracks.size+':'+S.allIds.length+':'+DIA_KEY();if(radioCache.sig!==sig)radioCache={sig,m:{}};if(radioCache.m[k])return radioCache.m[k];
-  let ids=S.allIds.filter(id=>{const t=S.tracks.get(id);return t&&radioKind(t,k);});
+function radioIds(k){const sig=S.tracks.size+':'+S.allIds.length+':'+DIA_KEY()+':'+FBV+':'+Object.keys(S.likes).length;if(radioCache.sig!==sig)radioCache={sig,m:{}};if(radioCache.m[k])return radioCache.m[k];
+  const FB=fbOf('rad:'+k);let ids=S.allIds.filter(id=>{const t=S.tracks.get(id);return t&&!FB.down.has(id)&&(FB.up.has(id)||radioKind(t,k));});
   if(k==='rockes')ids=capArtists(ids,[[/\bmarea\b|\bkutxi\b/,1e9],[/platero/,4],[/extremoduro|\brobe\b/,30]],15); // que mande Marea y Platero apenas salga
   if(k==='hit'){ // radiofórmula: lo de los últimos años manda; nada de antes de 2008 salvo lo que te guste; pocos artistas españoles
     ids=ids.filter(id=>{const t=S.tracks.get(id),y=parseInt(t.y,10);return !(y>1900&&y<2008)||S.likes[id];});
@@ -4174,6 +4231,7 @@ class CarUI extends Component{
     this.setState({mode:m});this.say({shuf:'ALEATORIO',radio:'RADIO DE ESTA CANCIÓN',once:'ESTA SONARÁ UNA VEZ MÁS'}[m]);
     clearTimeout(this.cyT);this.cyT=setTimeout(()=>{const ok=this.applyMode(m);if(!ok)this.setState({mode:this.applied||'shuf'});else if(m==='radio')this.say('RADIO · '+(this.radioLb||'').toUpperCase());},1100);}
   setMode(m){const ok=this.applyMode(m);this.setState({mode:ok?m:(this.applied||'shuf')});}
+  vote(v){const r=stnVote(v);this.say(r.msg);if(r.ok&&v<0)setTimeout(()=>P.next(),700);}
   dblTap(){const n=performance.now();if(n-(this.lastTap||0)<420){this.lastTap=0;this.like();}else this.lastTap=n;}
   like(){const t=P.current,lk=this.state.likeK||0;if(!t||t.test){this.say('NADA QUE GUARDAR');return;}const v=!(S.likes[t.id]>0);toggleLike(t.id);this.setState({like:v,likeK:lk+1});this.say(v?'GUARDADA EN ME GUSTA':'QUITADA DE ME GUSTA');}
   fund(){const f=!(prefs.fx&&prefs.xf>0);if(f){prefs.fx=true;if(!(prefs.xf>0))prefs.xf=prefs.xf0||4;}else{prefs.xf0=prefs.xf||4;prefs.xf=0;}savePrefs();this.setState({fund:f});this.say(f?'FUNDIDO SÍ':'FUNDIDO NO');}
@@ -4515,7 +4573,7 @@ function pcBuild(){const root=pcE('pc');root.innerHTML=`
   <div class="pc-rt">
     <button class="pc-ib" id="pcRadio" aria-label="Radio de esta canción">${PCI.radio}</button>
     <button class="pc-ib" id="pcNpB" aria-label="Sonando ahora">${PCI.np}</button>
-    <button class="pc-ib" id="pcQB" aria-label="Cola">${PCI.queue}</button>
+    <button class="pc-ib" id="pcDev" data-k="devbtn" onclick="openDevices()" aria-label="Aparatos" title="Manejar otro aparato"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="3" width="12" height="18" rx="2"/><circle cx="12" cy="14" r="3.2"/><circle cx="12" cy="7" r="1"/></svg></button><button class="pc-ib" id="pcQB" aria-label="Cola">${PCI.queue}</button>
     <button class="pc-ib" id="pcMute" aria-label="Silenciar">${PCI.vol}</button>
     <div class="pc-trk pc-vol" id="pcVol" role="slider" aria-label="Volumen" tabindex="0"><span class="rl"></span><span class="fl" id="pcVfl"></span><span class="th" id="pcVth"></span></div>
   </div>
@@ -4558,8 +4616,11 @@ function pcLibItems(){const it=[];const F=PC.libF;
   if(F==='all'||F==='pl')it.push({k:'likes',t:'ME GUSTA',s:'Lista · '+likedIds().length+' canciones',cov:pcLikeCov(48),pl:1});
   if(F==='all'||F==='rad')PC.ST.filter(s=>s.key!=='likes').forEach(s=>it.push({k:s.key,t:s.full,s:'Emisora · '+s.f+' Hz',cov:pcStnCov(s,48),pl:1}));
   if(F==='all'||F==='pl'){for(const [id,p] of Object.entries(S.playlists||{}))it.push({k:'pl:'+id,t:p.nm||'Lista',s:'Lista · '+(p.ids||[]).length+' canciones',c:(getTrack((p.ids||[])[0])||{}).c,ini:(p.nm||'L')[0]});}
-  if(F==='ar'||F==='all'){const top=[...S.artists].sort((a,b)=>b.ids.length-a.ids.length).slice(0,F==='ar'?400:12);top.forEach(a=>it.push({k:'ar:'+a.id,t:a.name,s:'Artista',c:a.cover,rd:1,ini:a.name[0]}));}
-  if(F==='al'){S.albums.slice(0,400).forEach(a=>it.push({k:'al:'+a.id,t:a.title,s:'Álbum · '+a.artist,c:a.cover,ini:a.title[0]}));}
+  const fa=favKeys('ar:').map(id=>S.artistById.get(id)).filter(Boolean),fl=favKeys('al:').map(id=>S.albumById.get(id)).filter(Boolean);
+  if(F==='ar'||F==='all')fa.forEach(a=>it.push({k:'ar:'+a.id,t:a.name,s:'Artista · siguiendo',c:a.cover,rd:1,ini:a.name[0]}));
+  if(F==='al'||F==='all')fl.forEach(a=>it.push({k:'al:'+a.id,t:a.title,s:'Álbum · '+a.artist,c:a.cover,ini:a.title[0]}));
+  if(F==='ar'){const fs=new Set(fa);[...S.artists].filter(a=>!fs.has(a)).sort((a,b)=>b.ids.length-a.ids.length).slice(0,400).forEach(a=>it.push({k:'ar:'+a.id,t:a.name,s:'Artista',c:a.cover,rd:1,ini:a.name[0]}));}
+  if(F==='al'){const fs=new Set(fl);S.albums.filter(a=>!fs.has(a)).slice(0,400).forEach(a=>it.push({k:'al:'+a.id,t:a.title,s:'Álbum · '+a.artist,c:a.cover,ini:a.title[0]}));}
   return it;}
 function pcRenderLib(){document.querySelectorAll('#pcChips [data-f]').forEach(b=>b.classList.toggle('on',b.dataset.f===PC.libF&&PC.libF!=='all'));
   const cur=PC.view.k||'',el=pcE('pcLib');el.innerHTML=pcLibItems().map(i=>'<button class="pc-li'+(i.pl?' pl':'')+(cur===i.k?' on':'')+'" data-open="'+escH(i.k)+'">'+(i.cov||pcCov(i.c,48,i.rd?'rd':'',i.ini))+'<span class="tx"><span class="t1 pc-ell">'+escH(i.t)+'</span><span class="t2 pc-ell">'+escH(i.s)+'</span></span></button>').join('');pcFillCovers(el);}
@@ -4600,11 +4661,11 @@ function pcCollInfo(k){const ids=collIds(k),kind=k.split(':')[0];const st=PC.ST.
 function pcColl(B,k){const I=pcCollInfo(k);pcE('pcMtitle').textContent=String(I.t).toUpperCase();
   const dur=I.ids.reduce((a,id)=>a+((S.tracks.get(id)||{}).du||0),0);
   B.innerHTML='<div class="pc-hdr">'+I.cov+'<div style="min-width:0"><div class="k">'+escH(I.kind)+'</div><h1>'+escH(String(I.t).toUpperCase())+'</h1><div class="m">'+escH(I.m)+(dur?' · '+Math.round(dur/60)+' min':'')+'</div></div></div>'+
-    '<div class="pc-act"><button class="pc-big" data-play="'+escH(k)+'" aria-label="Reproducir">'+PCI.play.replace('width="20" height="20"','width="26" height="26"')+'</button><button class="pc-ib'+(P.src===k&&P.shuffle?' on':'')+'" data-shufplay="'+escH(k)+'" aria-label="Reproducir en aleatorio" style="width:48px;height:48px">'+PCI.shuf.replace('width="20" height="20"','width="28" height="28"')+'</button></div>';
+    '<div class="pc-act"><button class="pc-big" data-play="'+escH(k)+'" aria-label="Reproducir">'+PCI.play.replace('width="20" height="20"','width="26" height="26"')+'</button><button class="pc-ib'+(P.src===k&&P.shuffle?' on':'')+'" data-shufplay="'+escH(k)+'" aria-label="Reproducir en aleatorio" style="width:48px;height:48px">'+PCI.shuf.replace('width="20" height="20"','width="28" height="28"')+'</button>'+(k.startsWith('al:')?'<button class="pc-ib'+(isFav(k)?' on':'')+'" data-fav="'+escH(k)+'" aria-label="Guardar álbum" title="'+(isFav(k)?'Quitar de tu biblioteca':'Guardar en tu biblioteca')+'" style="width:48px;height:48px;font-size:26px;color:'+(isFav(k)?'var(--hot,#ffb347)':'inherit')+'">'+(isFav(k)?'♥':'♡')+'</button>':'')+'</div>';
   B.append(pcTable(I.ids,k,k.startsWith('al:')));}
 function pcArtist(B,k){const R=S.artistById.get(k.slice(3));if(!R){B.innerHTML='<div class="pc-empty">ARTISTA NO ENCONTRADO</div>';return;}pcE('pcMtitle').textContent=R.name.toUpperCase();
   B.innerHTML='<div class="pc-hdr">'+pcCov(R.cover,232,'rd lg',R.name[0])+'<div style="min-width:0"><div class="k">ARTISTA</div><h1>'+escH(R.name.toUpperCase())+'</h1><div class="m">'+R.ids.length+' canciones · '+R.albums.length+' álbumes en tu biblioteca</div></div></div>'+
-    '<div class="pc-act"><button class="pc-big" data-play="'+escH(k)+'" aria-label="Reproducir">'+PCI.play.replace('width="20" height="20"','width="26" height="26"')+'</button><button class="pc-ib" data-shufplay="'+escH(k)+'" aria-label="Aleatorio" style="width:48px;height:48px">'+PCI.shuf.replace('width="20" height="20"','width="28" height="28"')+'</button><button class="pc-chip" data-radioof="'+escH(R.ids[0]||'')+'" style="height:38px">RADIO DEL ARTISTA</button></div>'+
+    '<div class="pc-act"><button class="pc-big" data-play="'+escH(k)+'" aria-label="Reproducir">'+PCI.play.replace('width="20" height="20"','width="26" height="26"')+'</button><button class="pc-ib" data-shufplay="'+escH(k)+'" aria-label="Aleatorio" style="width:48px;height:48px">'+PCI.shuf.replace('width="20" height="20"','width="28" height="28"')+'</button><button class="pc-ib'+(isFav(k)?' on':'')+'" data-fav="'+escH(k)+'" aria-label="Seguir" title="'+(isFav(k)?'Dejar de seguir':'Seguir')+'" style="width:48px;height:48px;font-size:26px;color:'+(isFav(k)?'var(--hot,#ffb347)':'inherit')+'">'+(isFav(k)?'♥':'♡')+'</button><button class="pc-chip" data-radioof="'+escH(R.ids[0]||'')+'" style="height:38px">RADIO DEL ARTISTA</button></div>'+
     '<div class="pc-sec"><div class="pc-h2" style="margin-top:4px"><h2>POPULARES</h2></div></div>';
   const pop=[...R.ids].sort((a,b)=>(S.likes[b]>0)-(S.likes[a]>0)).slice(0,5);B.append(pcTable(pop,k,false,true));
   const als=R.albums.map(id=>S.albumById.get(id)).filter(Boolean);
@@ -4681,16 +4742,16 @@ function pcCover(t){const cv=pcE('pcCv');if(!cv)return;const key=t?(t.c||'h:'+t.
     const s=Math.min(im.width,im.height);g.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,N,N);const d=g.getImageData(0,0,N,N).data;draw((i,j)=>{const o=(j*N+i)*4;return Math.pow((.3*d[o]+.59*d[o+1]+.11*d[o+2])/255,.9);});}catch{}};im.src=u;}).catch(()=>{});}
 
 /* barra de abajo */
-function pcSrcLabel(){const src=P.src||'';if(PC.applied==='radio'&&P.radioSeed)return'RADIO · '+String(P.radioSeed.t||'').toUpperCase();
+function pcSrcLabel(){if(S.ctrl)return 'MANEJANDO EL '+String(ctrlName()||'OTRO APARATO').toUpperCase();const src=P.src||'';if(PC.applied==='radio'&&P.radioSeed)return'RADIO · '+String(P.radioSeed.t||'').toUpperCase();
   const st=PC.ST.find(s=>s.key===src);if(st)return'EMISORA '+st.f+' Hz · '+st.full;if(!src)return'';if(src==='test')return'PRUEBA DE SONIDO';if(src==='search'||src==='search4')return'BÚSQUEDA';try{return String(collName(src)).toUpperCase();}catch{return'';}}
-function pcTrack(){if(!PC.on)return;const t=P.current;const lk=!!(t&&S.likes[t.id]>0);
+function pcTrack(){if(!PC.on)return;const t=S.ctrl?nowInfo().t:P.current;const lk=!!(t&&S.likes[t.id]>0);
   pcE('pcNow').innerHTML=t?pcCov(t.c,56,'',(t.t||'?')[0])+'<span style="min-width:0"><span class="t1 pc-ell" style="display:block" data-right="np">'+escH(t.t||'Sin título')+'</span><span class="t2 pc-ell" style="display:block" data-artist="'+escH(t.arId||'')+'">'+escH(t.a||'')+'</span></span><button class="pc-ib'+(lk?' on':'')+'" data-like="'+t.id+'" aria-label="Me gusta">'+(lk?PCI.heartF:PCI.heart)+'</button>'
     :'<span class="t2" style="padding-left:8px">'+(S.tracks.size?'PULSA PLAY: SUENA LA EMISORA '+PC.ST[pcStn()].full:'SIN MÚSICA TODAVÍA')+'</span>';
   pcFillCovers(pcE('pcNow'));pcRenderRight();pcMarkPlaying();pcModesUI();
   if(PC.applied==='once'&&PC.onceId&&t&&t.id!==PC.onceId)pcApply(PC.prevMode||'shuf');}
 function pcModesUI(){pcE('pcShuf').classList.toggle('on',PC.applied==='shuf'&&P.shuffle!==false);pcE('pcOnce').classList.toggle('on',PC.applied==='once');pcE('pcRadio').classList.toggle('on',PC.applied==='radio');
   const open=!pcE('pc').classList.contains('noq');pcE('pcNpB').classList.toggle('on',open&&PC.right==='np');pcE('pcQB').classList.toggle('on',open&&PC.right==='q');}
-function pcVolUI(){const v=AE.el.muted?0:(prefs.vol??1);pcE('pcVfl').style.width=(v*100)+'%';pcE('pcVth').style.left=(v*100)+'%';pcE('pcMute').innerHTML=v===0?PCI.mute:PCI.vol;pcE('pcVol').setAttribute('aria-valuenow',Math.round(v*100));}
+function pcVolUI(){const v=S.ctrl?knobVal():AE.el.muted?0:(prefs.vol??1);pcE('pcVfl').style.width=(v*100)+'%';pcE('pcVth').style.left=(v*100)+'%';pcE('pcMute').innerHTML=v===0?PCI.mute:PCI.vol;pcE('pcVol').setAttribute('aria-valuenow',Math.round(v*100));}
 function pcTick(){if(!PC.on||document.hidden)return;const n=nowInfo();
   pcE('pcT1').textContent=fmt(n.pos);pcE('pcT2').textContent=fmt(n.dur||0);const f=n.dur?Math.min(1,n.pos/n.dur):0;pcE('pcFl').style.width=(f*100)+'%';pcE('pcTh').style.left=(f*100)+'%';
   const d=new Date();pcE('pcClock').textContent=['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][d.getDay()]+' '+d.getDate()+'  '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
@@ -4737,6 +4798,7 @@ function pcClick(e){const t=e.target;let b;
   if((b=t.closest('[data-gov]'))){pcGo({v:b.dataset.gov});return;}
   if((b=t.closest('[data-artist]'))&&b.dataset.artist){pcGo({v:'artist',k:'ar:'+b.dataset.artist});return;}
   if((b=t.closest('[data-album]'))&&b.dataset.album){pcGo({v:'coll',k:'al:'+b.dataset.album});return;}
+  if((b=t.closest('[data-fav]'))){toggleFav(b.dataset.fav);return;}
   if((b=t.closest('[data-hdel]'))){SH.del(+b.dataset.hdel);pcRenderMain(true);return;}
   if((b=t.closest('[data-hclear]'))){SH.clear();pcRenderMain(true);return;}
   if((b=t.closest('[data-hp]'))){const x=SH.get()[+b.dataset.hp];if(x){SH.add(x);if(x.k==='t')playRadioFrom(x.id);else if(x.k==='q'){PC.q=x.q;pcE('pcQ').value=x.q;pcRenderMain(true);}else pcOpen(x.k+':'+x.id);}return;}
