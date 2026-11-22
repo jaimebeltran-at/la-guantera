@@ -1,5 +1,5 @@
-const V='guantera-v32';
-const SHELL=['./','./index.html','./manifest.webmanifest','./manifest-coche.webmanifest','./manifest-ordenador.webmanifest','./manifest-movil.webmanifest','./coche.html','./ordenador.html','./movil.html','./icon-192.png','./icon-512.png'];
+const V='guantera-v33';
+const SHELL=['./','./index.html','./manifest.webmanifest','./icon.svg','./manifest-coche.webmanifest','./manifest-ordenador.webmanifest','./manifest-movil.webmanifest','./coche.html','./ordenador.html','./movil.html','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==V).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',e=>{const req=e.request;const u=new URL(req.url);if(req.method!=='GET'||u.origin!==location.origin)return;

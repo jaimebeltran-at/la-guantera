@@ -7,10 +7,10 @@
 <script>/* tres apps separadas: ?m=coche, ?m=ordenador o ?m=movil (o coche.html, ordenador.html, movil.html). Cada una abre siempre en su modo. */
 window.FORCE=({coche:'car',ordenador:'pc',pc:'pc',movil:'phone'})[new URLSearchParams(location.search).get('m')]||null;
 document.write('<link rel="manifest" href="'+(FORCE==='car'?'manifest-coche.webmanifest':FORCE==='pc'?'manifest-ordenador.webmanifest':FORCE==='phone'?'manifest-movil.webmanifest':'manifest.webmanifest')+'">');</script>
-<link rel="icon" href="icon-192.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="alternate icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
-<title>La Guantera</title>
+<title>Spoticar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=DotGothic16&family=Marcellus&display=swap">
@@ -351,7 +351,7 @@ body.carmode>#app,body.carmode>#np{display:none!important}
 
 <div class="app" id="app">
   <aside class="side plastic" aria-label="Navegación">
-    <div class="brand"><span class="badge chrome"><svg class="i" style="width:18px;height:18px"><use href="#i-dj"/></svg></span><b>La Guantera</b></div>
+    <div class="brand"><img src="icon-192.png" alt="" width="26" height="26" style="border-radius:7px;display:block"><b>Spoticar</b></div>
     <nav class="nav" id="nav"></nav>
     <div class="sec" style="gap:6px;min-height:0"><div class="label" style="padding:0 10px">Tus listas</div><div class="lists" id="sideLists"></div></div>
     <div class="sp"></div>
@@ -367,7 +367,7 @@ body.carmode>#app,body.carmode>#np{display:none!important}
       <button class="disp lcd" data-act="openNp" aria-label="Abrir lo que suena">
         <span class="cv" data-k="cover"></span>
         <span style="min-width:0;display:flex;flex-direction:column">
-          <span class="mq" data-k="title"><span>LA GUANTERA</span></span>
+          <span class="mq" data-k="title"><span>SPOTICAR</span></span>
           <span class="mq l2" data-k="sub"><span>Sin música todavía</span></span>
         </span>
         <span class="tm"><span data-k="pos">0:00</span><small class="dim" data-k="dur">--:--</small></span>
@@ -1159,7 +1159,7 @@ function nowInfo(){
     const pos=Math.min(dur||1e9,(pr.pos||0)+(pr.st==='play'?(Date.now()-(pr.at||Date.now()))/1000:0));
     return{t,id:pr.tid,title:t?(t.t||'Sin título'):'Nada sonando',sub:t?[t.a,t.al].filter(Boolean).join(' · '):'',cover:t&&t.c,pos,dur,playing:pr.st==='play',shuffle:!!pr.sh,repeat:pr.rp||'off',remote:pr.dn||'otro aparato'};}
   const t=P.current,d=AE.el;
-  return{t,id:t&&t.id,title:t?(t.t||'Sin título'):'La Guantera',sub:t&&S.loading===t.id?'Cargando desde tu Drive…':t?[t.a,t.al].filter(Boolean).join(' · '):(S.tracks.size?'Elige algo que escuchar':'Sin música todavía'),
+  return{t,id:t&&t.id,title:t?(t.t||'Sin título'):'Spoticar',sub:t&&S.loading===t.id?'Cargando desde tu Drive…':t?[t.a,t.al].filter(Boolean).join(' · '):(S.tracks.size?'Elige algo que escuchar':'Sin música todavía'),
     cover:t&&t.c,pos:d.currentTime||0,dur:(isFinite(d.duration)&&d.duration)||(t&&t.du)||0,playing:!!t&&!d.paused,shuffle:P.shuffle,repeat:P.repeat,remote:null};}
 function setMq(el,text){let span=el.firstElementChild;if(!span){span=h('span');el.append(span);}if(el.dataset.txt===text)return;el.dataset.txt=text;
   el.classList.remove('run');span.style.paddingRight='';span.textContent=text;
@@ -1168,7 +1168,7 @@ function setMq(el,text){let span=el.firstElementChild;if(!span){span=h('span');e
 function renderPlayer(force){const n=nowInfo();if(force)$$('.mq').forEach(m=>delete m.dataset.txt);
   $$('[data-k=title]').forEach(el=>setMq(el,(n.remote?'▸ ':'')+n.title.toUpperCase()));
   $$('[data-k=sub]').forEach(el=>setMq(el,n.remote?'Sonando en el '+n.remote+(n.sub?' · '+n.sub:''):n.sub));
-  $$('[data-k=cover]').forEach(el=>{const key=(n.cover||'')+'|'+n.title;if(el.dataset.c!==key){el.dataset.c=key;fillCover(el,n.cover,n.t?(n.t.al||n.title):'La Guantera');}});
+  $$('[data-k=cover]').forEach(el=>{const key=(n.cover||'')+'|'+n.title;if(el.dataset.c!==key){el.dataset.c=key;fillCover(el,n.cover,n.t?(n.t.al||n.title):'Spoticar');}});
   $$('[data-k=playbtn]').forEach(b=>{setIc(b.querySelector('svg'),n.playing?'pause':'play');b.setAttribute('aria-label',n.playing?'Pausar':'Reproducir');});
   $$('[data-k=shuf]').forEach(b=>b.classList.toggle('on',n.shuffle));
   $$('[data-k=rep]').forEach(b=>{b.classList.toggle('on',n.repeat!=='off');setIc(b.querySelector('svg'),n.repeat==='one'?'repeat1':'repeat');});
@@ -1291,7 +1291,7 @@ const carBtn=(act,icon,label)=>h('button',{class:'pbtn','data-act':act,'aria-lab
 function goFull(){if(typeof SIM!=='undefined'&&SIM)return;try{const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen({navigationUI:'hide'}).catch(()=>{});}catch{}}
 function forceBack(){let b=document.getElementById('forceBack');const off=FORCE&&((FORCE==='car'&&!document.body.classList.contains('carmode'))||(FORCE==='pc'&&!(typeof PC!=='undefined'&&PC.on)));
   if(!off){if(b)b.hidden=true;return;}if(!b){b=document.createElement('button');b.id='forceBack';b.style.cssText='position:fixed;z-index:9999;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));padding:14px 20px;border:0;border-radius:999px;background:#ff8a1f;color:#140802;font:700 16px system-ui;box-shadow:0 6px 20px rgba(0,0,0,.5)';
-    b.onclick=()=>{FORCE==='car'?carOn():pcOn();};document.body.append(b);}b.textContent=FORCE==='car'?'‹ Volver al coche':'‹ Volver a La Guantera';b.hidden=false;}
+    b.onclick=()=>{FORCE==='car'?carOn():pcOn();};document.body.append(b);}b.textContent=FORCE==='car'?'‹ Volver al coche':'‹ Volver a Spoticar';b.hidden=false;}
 setInterval(()=>{if(window.FORCE&&FORCE!=='phone')forceBack();},700);
 function carOn(){if(typeof PC!=='undefined'&&PC.on)pcOff();LS.set('lastMode','car');document.body.classList.add('carmode');if(!prefs.fx||!(prefs.xf>0)){prefs.fx=true;if(!(prefs.xf>0))prefs.xf=4;try{savePrefs();}catch{}}goFull();if(!window.__gf){window.__gf=1;['pointerup','click','touchend','keydown'].forEach(e=>document.addEventListener(e,()=>{if(document.body.classList.contains('carmode'))goFull();},{capture:true,passive:true}));}closeNp();closeLayer();$('#car').hidden=false;$('#app').setAttribute('aria-hidden','true');renderCar();wake();
   try{history.replaceState(null,'','#coche');}catch{}}
@@ -1391,7 +1391,7 @@ function renderDevices(){const box=$('#devBox');if(!box)return;box.textContent='
   box.append(h('div',{class:'row',style:'min-height:52px;flex-wrap:nowrap'},ic(KIND[device.kind].icon),h('div',{style:'flex:1;min-width:0'},h('b',null,device.name+' (este)'),
     h('div',{class:'sub'},S.ctrl?'Estás manejando otro aparato':'La música suena aquí')),S.ctrl?h('button',{class:'pbtn',onclick:()=>{stopControl();renderDevices();}},'Volver a este'):null));
   const others=S.peers.filter(p=>!p.sameTab&&p.kind==='viewer'&&p.isMe&&p.presence&&p.presence.dev);
-  if(!others.length)box.append(h('div',{class:'note'},'Abre La Guantera en otro aparato con la misma cuenta (el móvil, el ordenador o el coche) y aparecerá aquí en unos segundos para manejarlo desde este. Las órdenes tardan uno o dos segundos en llegar.'));
+  if(!others.length)box.append(h('div',{class:'note'},'Abre Spoticar en otro aparato con la misma cuenta (el móvil, el ordenador o el coche) y aparecerá aquí en unos segundos para manejarlo desde este. Las órdenes tardan uno o dos segundos en llegar.'));
   for(const p of others){const pr=p.presence,t=getTrack(pr.tid),k=KIND[pr.dk]||KIND.pc;
     box.append(h('div',{class:'row',style:'min-height:60px;flex-wrap:nowrap'},ic(k.icon),
       h('div',{style:'flex:1;min-width:0'},h('b',null,pr.dn||k.name),h('div',{class:'sub',style:'white-space:nowrap;overflow:hidden;text-overflow:ellipsis'},
@@ -1673,7 +1673,7 @@ const SYNC={running:false,phase:'',done:0,total:0,cancel:false,deep:false,last:L
 const renderSyncSoon=debounce(()=>renderSync(),300);
 
 function loginCard(){return h('div',{class:'sec'},
-  h('div',{class:'lcd',style:'padding:18px 20px'},h('div',{style:'font-size:22px'},'LA GUANTERA'),h('div',{class:'dim',style:'font-size:14px;margin-top:4px'},'Tu música, desde tu Google Drive.')),
+  h('div',{class:'lcd',style:'padding:18px 20px'},h('div',{style:'font-size:22px'},'SPOTICAR'),h('div',{class:'dim',style:'font-size:14px;margin-top:4px'},'Tu música, desde tu Google Drive.')),
   h('p',{class:'sub',style:'margin:0;max-width:60ch'},'Entra con tu cuenta de asturtalent.org. La app solo lee tu música y guarda tus listas en una zona privada de tu Drive.'),
   h('div',{class:'row'},h('button',{class:'pbtn amber','data-act':'login'},'Entrar con Google'),h('button',{class:'pbtn','data-act':'soundTest'},ic('wave'),'Prueba de sonido')));}
 ACT.login=()=>{if(!navigator.onLine){toast('Sin conexión');return;}const ok=AUTH.request();if(!ok){AUTH.redirect();return;}clearTimeout(AUTH.lt);AUTH.lt=setTimeout(()=>{if(!AUTH.ok()&&AUTH.busy){AUTH.busy=false;AUTH.fail('popup');}},2500);};
@@ -1714,7 +1714,7 @@ function woodTexture(){const W=512,H=64,c=document.createElement('canvas');c.wid
   for(let y=0;y<H;y++)for(let X=0;X<W;X++){const n=nz(X/38,y/9)+nz(X/12,y/3)*.35,grain=Math.sin((y/H*7+n*5.5+X/W*1.3)*Math.PI*1.8),burl=nz(X/7,y/7);
     const t=Math.max(0,Math.min(1,.5+.32*grain+.18*(burl-.5))),o=(y*W+X)*4;d[o]=58+t*78;d[o+1]=28+t*40;d[o+2]=14+t*20;d[o+3]=255;}
   x.putImageData(img,0,0);return c.toDataURL('image/jpeg',.82);}
-function firstRunSheet(){openSheet(h('h3',null,'¿Dónde estás abriendo La Guantera?'),h('p',{class:'sub',style:'margin:0'},'Así el resumen sabe en qué aparato escuchas, y el coche abre directamente en modo coche.'),
+function firstRunSheet(){openSheet(h('h3',null,'¿Dónde estás abriendo Spoticar?'),h('p',{class:'sub',style:'margin:0'},'Así el resumen sabe en qué aparato escuchas, y el coche abre directamente en modo coche.'),
   h('div',{class:'steps'},...Object.entries(KIND).map(([k,o])=>h('button',{class:'pbtn'+(device.kind===k?' amber':''),style:'min-height:64px;font-size:17px',onclick:()=>{
     device.kind=k;device.name=o.name;LS.set('dev',device);closeLayer();
     if(k==='car'){prefs.carStart=true;savePrefs();carOn();}else if(document.body.classList.contains('carmode'))carOff();renderAll();}},ic(o.icon),o.name))));}
@@ -4322,7 +4322,7 @@ html.sim .car{right:auto!important;bottom:auto!important;padding:0!important;bor
     h('button',{onclick:()=>{carOff();location.href='./';}},'Salir del simulador'));
   const keys=h('div',{id:'simKeys'},h('span',{style:'color:#9a917f'},'Mandos del volante / radio:'),
     ...[['MediaTrackPrevious','⏮ Anterior'],['MediaPlayPause','⏯ Play/Pausa'],['MediaTrackNext','⏭ Siguiente'],['AudioVolumeMute','🔇 Mute']].map(([k,l])=>h('button',{onclick:()=>dispatchEvent(new KeyboardEvent('keydown',{key:k,code:k,bubbles:true,cancelable:true}))},l)));
-  const ch=h('div',{id:'simChrome'},h('div',{class:'sy'},'◁','⌂','▢',h('span',{style:'margin-left:auto'},'17:51')),h('div',{class:'tb'},'● La Guantera'),h('div',{class:'ur'},h('span',null,'jaimebeltran-at.github.io/la-guantera/#coche')));
+  const ch=h('div',{id:'simChrome'},h('div',{class:'sy'},'◁','⌂','▢',h('span',{style:'margin-left:auto'},'17:51')),h('div',{class:'tb'},'● Spoticar'),h('div',{class:'ur'},h('span',null,'jaimebeltran-at.github.io/la-guantera/#coche')));
   document.body.append(bar,keys,ch);addEventListener('resize',simFit);if(!document.body.classList.contains('carmode'))carOn();simFit();}
 /* medidor de fluidez (abre con ?medir): imágenes por segundo, peor parón y tiempo bloqueado, para probar en la tablet de verdad */
 const VER='v22';
@@ -4540,7 +4540,7 @@ function pcOff(){PC.on=false;document.body.classList.remove('pcmode');clearInter
 
 function pcBuild(){const root=pcE('pc');root.innerHTML=`
 <header class="pc-top">
-  <div class="pc-logo"><i aria-hidden="true"></i><span class="pc-dot pc-glow" style="font-size:18px">LA GUANTERA</span></div>
+  <div class="pc-logo"><img src="icon-192.png" alt="" width="28" height="28" style="border-radius:7px"><span class="pc-dot pc-glow" style="font-size:18px">SPOTICAR</span></div>
   <button class="pc-home" id="pcHome" aria-label="Inicio">${PCI.home}</button>
   <label class="pc-srch" id="pcSrchL"><span style="color:#c4561a;display:grid">${PCI.search}</span><span style="position:absolute;left:-9999px">Buscar</span><input id="pcQ" type="search" autocomplete="off" placeholder="¿QUÉ QUIERES ESCUCHAR?"></label>
   <div class="pc-clock"><span class="pc-dot" id="pcClock" style="font-size:15px"></span><button class="pc-ib" id="pcDjTop" aria-label="Claude DJ">${PCI.dj}</button><button class="pc-ib" id="pcGear" aria-label="Ajustes">${PCI.gear}</button></div>
@@ -4636,7 +4636,7 @@ function pcOpen(k){if(k==='all')return pcGo({v:'coll',k:'all'});pcGo({v:k.starts
 function pcRenderAll(){pcRenderLib();pcRenderMain();pcTrack();pcVolUI();pcModesUI();}
 function pcRenderMain(keepScroll){const B=pcE('pcBody'),sc=pcE('pcScroll');pcE('pcBack').disabled=!PC.back.length;pcE('pcFwd').disabled=!PC.fwd.length;
   const v=PC.view;B.innerHTML='';if(!keepScroll)sc.scrollTop=0;pcE('pcMtitle').textContent='';
-  if(!S.tracks.size&&v.v!=='dj'){B.innerHTML='<div class="pc-hdr"><div><div class="k">LA GUANTERA</div><h1>SIN MÚSICA TODAVÍA</h1><div class="m">Pulsa el engranaje de arriba a la derecha › Tu Drive › entra con Google y elige tu carpeta.</div></div></div>';return;}
+  if(!S.tracks.size&&v.v!=='dj'){B.innerHTML='<div class="pc-hdr"><div><div class="k">SPOTICAR</div><h1>SIN MÚSICA TODAVÍA</h1><div class="m">Pulsa el engranaje de arriba a la derecha › Tu Drive › entra con Google y elige tu carpeta.</div></div></div>';return;}
   if(v.v==='home')pcHome(B);else if(v.v==='search')pcSearch(B);else if(v.v==='artist')pcArtist(B,v.k);else if(v.v==='dj')pcDj(B);else pcColl(B,v.k);
   pcFillCovers(B);pcMarkPlaying();}
 function pcGreet(){const h2=new Date().getHours();return h2<6?'BUENAS NOCHES':h2<14?'BUENOS DÍAS':h2<21?'BUENAS TARDES':'BUENAS NOCHES';}
