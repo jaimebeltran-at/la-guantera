@@ -1339,7 +1339,7 @@ const DR={files:{},pres:null,cbP:null,cbC:null,seen:+LS.get('drSeen',0)||0,busy:
     try{const j=await gjson('/files',{spaces:'appDataFolder',fields:'files(id,name,appProperties)',pageSize:200,q:"name contains 'gu-'"});const now=Date.now(),peers=[];let mine=null;
       for(const f of j.files||[]){const m=f.name.match(/^gu-(dev|cmd)-(.+)\.json$/);if(!m)continue;if(!this.files[f.name])this.files[f.name]=f.id;const ap=f.appProperties||{};
         if(m[1]==='dev'){const pr={};for(const [k,v] of Object.entries(ap))pr[k]=this.num.has(k)?+v:v==='true'?true:v==='false'?false:v;
-          if(m[2]===device.id)continue;if(!pr.at||now-pr.at>50000)continue;peers.push({peer:m[2],sameTab:false,kind:'viewer',isMe:true,presence:pr});}
+          if(m[2]===device.id)continue;if(!pr.at||now-pr.at>(pr.st==='play'?240000:120000))continue;peers.push({peer:m[2],sameTab:false,kind:'viewer',isMe:true,presence:pr});}
         else if(m[2]===device.id&&+(ap.seq||0)>this.seen)mine=f;}
       peers.push({peer:device.id,sameTab:true,kind:'viewer',isMe:true,presence:this.pres||{}});this.peers=peers;S.myPeer=device.id;if(this.cbP)this.cbP({peers});
       if(mine){try{const d=await(await gfetch(G+'/files/'+mine.id+'?alt=media')).json();const L=Array.isArray(d&&d.list)?d.list:d?[d]:[];
@@ -1354,6 +1354,7 @@ const DR={files:{},pres:null,cbP:null,cbC:null,seen:+LS.get('drSeen',0)||0,busy:
     if(!id){const f2=new FormData();f2.append('metadata',new Blob([JSON.stringify({name,parents:['appDataFolder'],appProperties:{seq:String(seq)}})],{type:'application/json'}));f2.append('file',new Blob([body],{type:'application/json'}));
       this.files[name]=(await(await gfetch(GU+'/files?uploadType=multipart&fields=id',{method:'POST',body:f2})).json()).id;}
     setTimeout(()=>this.poll(),1800);setTimeout(()=>this.poll(),3800);}};
+document.addEventListener('visibilitychange',()=>{try{if(C.room===DR){presenceNow();if(!document.hidden)DR.poll();}}catch{}});
 setInterval(()=>{if(!AUTH.ok()||!device||DEMO||SIM)return;if(!C.room){C.room=DR;initRoom();}
   const now=Date.now(),others=DR.peers.some(p=>!p.sameTab),vis=!document.hidden,playing=P.current&&!AE.el.paused;
   const every=S.ctrl?2000:(others&&vis)?3000:vis?8000:playing?6000:30000;if(now-DR.lastPoll>=every)DR.poll();
@@ -1384,7 +1385,7 @@ function handleCmd(d){const ids=a=>(a||[]).filter(id=>S.tracks.has(id));
     case 'handoff':{const q=P.q.filter(id=>S.tracks.has(id)),ci=Math.max(0,q.indexOf(P.q[P.qi]));const pos=AE.el.currentTime||0;P.pause();
       sendCmd(d.from,{op:'take',q:q.slice(ci,ci+150),pos,src:P.src});break;}
     case 'take':{const q=ids(d.q);if(q.length){P.shuffle=false;P.orig=q.slice();P.q=q;P.src=d.src||'';P.load(0,{pos:+d.pos||0});}break;}}}
-function openDevices(){openSheet(h('div',{class:'row'},h('h3',null,'Tus aparatos'),h('span',{class:'sp'}),h('button',{class:'ibtn',onclick:closeLayer,'aria-label':'Cerrar'},ic('close'))),h('div',{id:'devBox',class:'menu'}));renderDevices();}
+function openDevices(){try{if(AUTH.ok()){if(!C.room){C.room=DR;initRoom();}presenceNow();DR.poll();setTimeout(()=>DR.poll(),2500);}}catch{}openSheet(h('div',{class:'row'},h('h3',null,'Tus aparatos'),h('span',{class:'sp'}),h('button',{class:'ibtn',onclick:closeLayer,'aria-label':'Cerrar'},ic('close'))),h('div',{id:'devBox',class:'menu'}));renderDevices();}
 function renderDevices(){const box=$('#devBox');if(!box)return;box.textContent='';
   if(!C.room||!device){box.append(h('div',{class:'note'},AUTH.ok()?'Buscando tus aparatos…':'Entra con tu cuenta de Google para manejar tus otros aparatos.'));if(AUTH.ok()&&!C.room){C.room=DR;initRoom();DR.poll();}return;}
   box.append(h('div',{class:'row',style:'min-height:52px;flex-wrap:nowrap'},ic(KIND[device.kind].icon),h('div',{style:'flex:1;min-width:0'},h('b',null,device.name+' (este)'),
