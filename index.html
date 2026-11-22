@@ -4618,6 +4618,7 @@ function pcLibItems(){const it=[];const F=PC.libF;
   if(F==='all'||F==='pl'){for(const [id,p] of Object.entries(S.playlists||{}))it.push({k:'pl:'+id,t:p.nm||'Lista',s:'Lista · '+(p.ids||[]).length+' canciones',c:(getTrack((p.ids||[])[0])||{}).c,ini:(p.nm||'L')[0]});}
   const fa=favKeys('ar:').map(id=>S.artistById.get(id)).filter(Boolean),fl=favKeys('al:').map(id=>S.albumById.get(id)).filter(Boolean);
   if(F==='ar'||F==='all')fa.forEach(a=>it.push({k:'ar:'+a.id,t:a.name,s:'Artista · siguiendo',c:a.cover,rd:1,ini:a.name[0]}));
+  if(F==='all'&&!fa.length)[...S.artists].sort((a,b)=>b.ids.length-a.ids.length).slice(0,12).forEach(a=>it.push({k:'ar:'+a.id,t:a.name,s:'Artista',c:a.cover,rd:1,ini:a.name[0]}));
   if(F==='al'||F==='all')fl.forEach(a=>it.push({k:'al:'+a.id,t:a.title,s:'Álbum · '+a.artist,c:a.cover,ini:a.title[0]}));
   if(F==='ar'){const fs=new Set(fa);[...S.artists].filter(a=>!fs.has(a)).sort((a,b)=>b.ids.length-a.ids.length).slice(0,400).forEach(a=>it.push({k:'ar:'+a.id,t:a.name,s:'Artista',c:a.cover,rd:1,ini:a.name[0]}));}
   if(F==='al'){const fs=new Set(fl);S.albums.filter(a=>!fs.has(a)).slice(0,400).forEach(a=>it.push({k:'al:'+a.id,t:a.title,s:'Álbum · '+a.artist,c:a.cover,ini:a.title[0]}));}
