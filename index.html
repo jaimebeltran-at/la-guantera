@@ -9,7 +9,9 @@ window.FORCE=({coche:'car',ordenador:'pc',pc:'pc',movil:'phone'})[new URLSearchP
 document.write('<link rel="manifest" href="'+(FORCE==='car'?'manifest-coche.webmanifest':FORCE==='pc'?'manifest-ordenador.webmanifest':FORCE==='phone'?'manifest-movil.webmanifest':'manifest.webmanifest')+'">');</script>
 <link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="alternate icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+.pbtn[aria-pressed="true"]{background:linear-gradient(180deg,#ffc77a,#ff9d2e);color:#140802;border-color:transparent}
+</style>
 <title>Spoticar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -574,11 +576,77 @@ function fbIndex(){if(fbIdx&&fbIdx.v===FBV&&fbIdx.n===Object.keys(S.likes).lengt
 const fbOf=key=>{const I=fbIndex();return{up:I.up[key]||new Set(),down:I.down[key]||new Set()};};
 function fbContext(){const src=P.src||'';if(/^rad:|^likes$/.test(src)){const st=PC.ST.find(x=>x.key===src);return{key:src,name:st?st.full:'LA EMISORA'};}
   const seed=P.radioSeed||(src.startsWith('tr:')?getTrack(src.slice(3)):null);if((src==='radio'||src.startsWith('tr:')||prefs.radio)&&seed)return{key:'ra:'+seed.arId,name:'LA RADIO DE '+(seed.a||'').toUpperCase()};return null;}
+/* ===== el criterio que aprende de tus votos (autocrítica) =====
+   Un "no encaja" no solo quita esa canción: miro qué tenía (quién la canta, con quién colabora, el género y a qué otra emisora suena)
+   y en cuanto se repite quito todo lo que comparta eso. Un "encaja" de un artista que no estaba en la lista lo va metiendo.
+   Si hay clave de Claude, además le pregunto por qué me equivoqué y guardo la regla que deduzca (en tu Drive, vale para todos tus aparatos). */
+const URB=c=>RADIO_RE.regg.test(c)||RADIO_RE.trap.test(c)||KIND_RE.regg.test(c);
+const capW=x=>String(x||'').replace(/\b\p{L}/gu,m=>m.toUpperCase());
+const stName=k=>{const st=PC.ST.find(x=>x.key==='rad:'+k);return st?st.full:k.toUpperCase()+' FM';};
+function featOf(t){if(t._ft)return t._ft;const as=artistsOf(t);return t._ft={pa:as[0]||'',co:as.slice(1),g:norm(t.g||'').split(/\s*[\/,;|]\s*/).filter(x=>x&&x.length>2),vb:[...vibeOf(t)].filter(v=>v[1]!==':')};}
+let lrnC={};
+function learned(key){const R=(S.cfg.rules||{})[key]||{};const sig=FBV+':'+Object.keys(S.likes).length+':'+(R.at||0);if(lrnC[key]&&lrnC[key].sig===sig)return lrnC[key];
+  const kind=key.startsWith('rad:')?key.slice(4):null,fb=fbOf(key),dn={pa:{},co:{},g:{},vb:{}},up={pa:{},co:{},g:{},vb:{}};
+  const add=(o,f)=>{o.pa[f.pa]=(o.pa[f.pa]||0)+1;f.co.forEach(c=>o.co[c]=(o.co[c]||0)+1);f.g.forEach(g=>o.g[g]=(o.g[g]||0)+1);f.vb.forEach(v=>{if(v!==kind)o.vb[v]=(o.vb[v]||0)+1;});};
+  for(const id of fb.down){const t=getTrack(id);if(t)add(dn,featOf(t));}for(const id of fb.up){const t=getTrack(id);if(t)add(up,featOf(t));}
+  const ex={pa:new Set((R.exA||[]).filter(a=>!up.pa[a])),co:new Set((R.exC||[]).filter(c=>!up.co[c])),g:new Set(R.exG||[]),vb:new Set()},inA=new Set(R.inA||[]);
+  for(const [a,n] of Object.entries(dn.pa))if(n>=2&&n>(up.pa[a]||0))ex.pa.add(a);
+  for(const [c,n] of Object.entries(dn.co))if((n>=2||URB(c))&&n>(up.co[c]||0))ex.co.add(c);
+  for(const [g,n] of Object.entries(dn.g))if(n>=3&&n>2*(up.g[g]||0))ex.g.add(g);
+  for(const [v,n] of Object.entries(dn.vb))if(n>=3&&n>2*(up.vb[v]||0))ex.vb.add(v);
+  for(const [a,n] of Object.entries(up.pa))if(n>=2&&!(dn.pa[a]>=n))inA.add(a);
+  for(const a of inA)ex.pa.delete(a);
+  return lrnC[key]={sig,ex,inA,dn,up,why:R.why||[]};}
+function passLearned(t,L){const f=featOf(t);if(L.ex.pa.has(f.pa))return false;for(const c of f.co)if(L.ex.co.has(c))return false;for(const g of f.g)if(L.ex.g.has(g))return false;for(const v of f.vb)if(L.ex.vb.has(v))return false;return true;}
+function explainVote(c,v,t){const L=learned(c.key),f=featOf(t),An=capW(f.pa)||'este artista',kind=c.key.startsWith('rad:')?c.key.slice(4):null,out=[];let sh='';
+  if(v>0){const core=kind&&radioKind(t,kind);
+    if(L.inA.has(f.pa)&&!core){out.push('Meto más canciones de '+An+' en '+c.name+'.');sh='MÁS DE '+An;}
+    else if(!core){out.push('Apuntado: '+An+' encaja. Si marcas otra suya, meto más.');sh='APUNTADO';}
+    else{out.push('Apuntado: esto es justo lo que buscas en '+c.name+'.');sh='APUNTADO';}
+    return{why:out.join(' '),short:sh};}
+  const urb=f.co.find(URB);if(urb){out.push('Fallo mío: era una colaboración con '+capW(urb)+', que es reguetón. Quito sus colaboraciones de '+c.name+'.');sh='FUERA COLABOS CON '+capW(urb);}
+  const vbx=f.vb.find(x=>L.ex.vb.has(x));if(vbx){out.push('Ya van varias que suenan más a '+stName(vbx)+' que a '+c.name+': quito todo lo de ese estilo.');sh=sh||'FUERA LO QUE SUENA A '+stName(vbx);}
+  else{const vb=f.vb.find(x=>x!==kind);if(vb&&!urb)out.push('Sonaba más a '+stName(vb)+'. Lo tengo en cuenta.');}
+  if(L.ex.pa.has(f.pa)){out.push('Saco a '+An+' de '+c.name+': ya me has quitado '+(L.dn.pa[f.pa]||2)+' suyas.');sh=sh||'FUERA '+An;}
+  else if(!urb){out.push('Anoto que '+An+' no pega aquí. Si me quitas otra suya, lo saco entero.');sh=sh||'ANOTADO';}
+  const gx=f.g.find(g=>L.ex.g.has(g));if(gx)out.push('Tampoco pondré más '+gx+' aquí.');
+  return{why:out.join(' '),short:sh||'ANOTADO'};}
+/* después de un voto, quita de lo que viene en la cola lo que ya no encaja */
+function pruneQueue(c){if(!P.q||!P.q.length)return 0;let keep;
+  if(c.key.startsWith('rad:')){const ok=new Set(radioIds(c.key.slice(4)));keep=id=>ok.has(id);}
+  else{const L=learned(c.key),fb=fbOf(c.key);keep=id=>{const t=getTrack(id);return !t||fb.up.has(id)||(!fb.down.has(id)&&passLearned(t,L));};}
+  const before=P.q.length;P.q=P.q.filter((id,i)=>i<=P.qi||keep(id));const n=before-P.q.length;if(n){try{renderQueueIfOpen();saveState();}catch{}}return n;}
+function showWhy(m){if(!m)return;const car=document.body.classList.contains('carmode');if(car){const C2=carO();if(C2&&C2.say)C2.say(m.toUpperCase().slice(0,120),6000);}else toast(m,9000);}
+async function askWhy(c,t){if(!(S.cfg.apiKey||'').trim()||!navigator.onLine)return;
+  try{const fb=fbOf(c.key),fl=id=>{const x=getTrack(id);return x?'- '+(x.a||'?')+' — '+(x.t||'?')+(x.g?' ['+x.g+']':'')+(x.y?' ('+x.y+')':''):'';};
+    const st=PC.ST.find(x=>x.key===c.key),desc=st?st.d:'radio de canciones parecidas a las de '+(t.a||'este artista');
+    const prompt='Eres el programador musical de "'+c.name+'" en Spoticar, el reproductor de Jaime. Qué es la emisora: '+desc+'.\n'+
+      'Jaime acaba de marcar que esta canción NO encaja: '+(t.a||'?')+' — '+(t.t||'?')+(t.g?' ['+t.g+']':'')+(t.y?' ('+t.y+')':'')+'.\n'+
+      'Otras que ha marcado que NO encajan:\n'+([...fb.down].slice(-25).map(fl).filter(Boolean).join('\n')||'(ninguna)')+'\n'+
+      'Las que SÍ encajan:\n'+([...fb.up].slice(-25).map(fl).filter(Boolean).join('\n')||'(ninguna)')+'\n'+
+      'Haz autocrítica: en una o dos frases cortas, en español y hablándole de tú, di por qué te equivocaste al ponerla y qué vas a cambiar. '+
+      'Después deduce una regla general para no repetirlo. Responde SOLO con JSON: {"porque":"...","excluir_artistas":[],"excluir_colaboradores":[],"excluir_generos":[],"incluir_artistas":[]}. '+
+      'Usa los nombres tal cual aparecen. Nunca excluyas a un artista que esté entre las que SÍ encajan. Si no hay regla clara, deja las listas vacías.';
+    const txt=await claudeAsk(prompt,600);const j=JSON.parse(txt.slice(txt.indexOf('{'),txt.lastIndexOf('}')+1));
+    const N=a=>(Array.isArray(a)?a:[]).map(x=>norm(String(x))).filter(Boolean).slice(0,8),U=(a,b)=>[...new Set([...(a||[]),...b])].slice(-80);
+    const rules=Object.assign({},S.cfg.rules||{}),R=Object.assign({},rules[c.key]||{});
+    R.exA=U(R.exA,N(j.excluir_artistas));R.exC=U(R.exC,N(j.excluir_colaboradores));R.exG=U(R.exG,N(j.excluir_generos));R.inA=U(R.inA,N(j.incluir_artistas));
+    if(j.porque)R.why=[...(R.why||[]),{at:Date.now(),t:(t.a||'')+' — '+(t.t||''),p:String(j.porque).slice(0,300)}].slice(-30);
+    R.at=Date.now();rules[c.key]=R;setCfg({rules});FBV++;const n=pruneQueue(c);
+    if(j.porque)showWhy(String(j.porque)+(n?' Quito '+n+' más de lo que venía.':''));}catch(e){}}
 function stnVote(v,t=P.current){if(!t||t.test)return{msg:'NADA QUE VOTAR'};const c=fbContext();if(!c)return{msg:'VOTA EN UNA EMISORA O EN UNA RADIO'};
   const up='fu:'+c.key+'|'+t.id,dn='fd:'+c.key+'|'+t.id,now=Date.now();SY.likes[v>0?up:dn]=now;SY.likes[v>0?dn:up]=-now;SY.push('likes');FBV++;
-  return{ok:1,msg:v>0?'✓ ENCAJA EN '+c.name:'✗ FUERA DE '+c.name};}
+  const ex=explainVote(c,v,t),n=v<0?pruneQueue(c):0;if(v<0)askWhy(c,t);try{updVote();}catch{}
+  return{ok:1,msg:v>0?'✓ ENCAJA EN '+c.name:'✗ FUERA DE '+c.name,why:ex.why+(n?' He quitado '+n+' parecidas de lo que venía.':''),short:ex.short+(n?' · −'+n+' EN COLA':'')};}
+/* botones de voto en el móvil y el ordenador (en el coche se desliza la carátula) */
+function updVote(){const c=S.ctrl?null:fbContext(),t=P.current,fb=c&&t?fbOf(c.key):null;
+  $$('[data-k=voteRow]').forEach(r=>{r.hidden=!c||!t;if(!c||!t)return;const l=r.querySelector('[data-k=voteLbl]');if(l)l.textContent=c.name;
+    r.querySelectorAll('[data-act=vote]').forEach(b=>{const on=b.dataset.v==='1'?fb.up.has(t.id):fb.down.has(t.id);b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));});});}
+function doVote(v){const r=stnVote(v);toast(r.msg);if(r.why)setTimeout(()=>toast(r.why,8000),1300);if(r.ok&&v<0)setTimeout(()=>P.next(),500);try{if(PC.on)pcTrack();}catch{}}
 function votesText(){const I=fbIndex(),L=[];const nm=k=>{if(k.startsWith('ra:')){const R=S.artistById.get(k.slice(3));return 'Radio de '+(R?R.name:'?');}const st=PC.ST.find(x=>x.key===k);return st?st.full:k;};
-  for(const k of new Set([...Object.keys(I.up),...Object.keys(I.down)])){L.push('## '+nm(k));for(const [lab,set] of [['ENCAJAN',I.up[k]],['NO ENCAJAN',I.down[k]]]){if(!set||!set.size)continue;L.push(lab+':');for(const id of set){const t=getTrack(id);if(t)L.push('- '+(t.a||'?')+' — '+(t.t||'?'));}}L.push('');}
+  for(const k of new Set([...Object.keys(I.up),...Object.keys(I.down)])){L.push('## '+nm(k));for(const [lab,set] of [['ENCAJAN',I.up[k]],['NO ENCAJAN',I.down[k]]]){if(!set||!set.size)continue;L.push(lab+':');for(const id of set){const t=getTrack(id);if(t)L.push('- '+(t.a||'?')+' — '+(t.t||'?'));}}
+    const Ln=learned(k),rl=[];if(Ln.ex.pa.size)rl.push('fuera artistas: '+[...Ln.ex.pa].join(', '));if(Ln.ex.co.size)rl.push('fuera colaboraciones con: '+[...Ln.ex.co].join(', '));if(Ln.ex.g.size)rl.push('fuera géneros: '+[...Ln.ex.g].join(', '));if(Ln.ex.vb.size)rl.push('fuera lo que suena a: '+[...Ln.ex.vb].map(stName).join(', '));if(Ln.inA.size)rl.push('más de: '+[...Ln.inA].join(', '));
+    if(rl.length)L.push('LO QUE HE APRENDIDO: '+rl.join(' · '));for(const w of (Ln.why||[]).slice(-5))L.push('AUTOCRÍTICA ('+w.t+'): '+w.p);L.push('');}
   return L.join('\n')||'Todavía no has votado ninguna canción.';}
 function toggleLike(id){if(!S.tracks.has(id))return;const on=!S.likes[id];SY.likes[id]=on?Date.now():-Date.now();SY.push('likes');updateLikeUI();}
 function setCfg(patch){Object.assign(S.cfg,patch,{up:Date.now()});SY.push('cfg');}
@@ -728,15 +796,15 @@ const P={q:[],orig:null,qi:-1,shuffle:false,repeat:'off',src:'',
 function vibeOf(t){const a=norm(t.a||''),g=norm(t.g||''),v=new Set();const tg=artTag(t);if(tg){tg.e.forEach(x=>v.add(x));tg.s.forEach(x=>v.add('s:'+x));}
   try{for(const k of ['fito','hit','regg','trap','divas','popes','rockes'])if(radioKind(t,k))v.add(k);}catch{}
   if(v.has('fito')||KIND_RE.rock.test(a)||/rock|metal|punk|grunge/.test(g))v.add('rock');return v;}
-function similarTo(t,n,ex,hint){if(!t||t.test||!S.tracks.size)return[];const mates=new Set();try{for(const pl of Object.values(S.playlists||{})){const ids=(pl&&pl.ids)||[];if(ids.includes(t.id))ids.forEach(i=>mates.add(i));}}catch{}const rfb=fbOf('ra:'+t.arId),dec=t.y?Math.floor(parseInt(t.y,10)/10):null,tv=vibeOf(t),tg=t.g?norm(t.g):'',tl=langOf(t),td=dateOf(t);if(!tv.size&&hint)tv.add(hint);
+function similarTo(t,n,ex,hint){if(!t||t.test||!S.tracks.size)return[];const mates=new Set();try{for(const pl of Object.values(S.playlists||{})){const ids=(pl&&pl.ids)||[];if(ids.includes(t.id))ids.forEach(i=>mates.add(i));}}catch{}const rfb=fbOf('ra:'+t.arId),rlr=learned('ra:'+t.arId),dec=t.y?Math.floor(parseInt(t.y,10)/10):null,tv=vibeOf(t),tg=t.g?norm(t.g):'',tl=langOf(t),td=dateOf(t);if(!tv.size&&hint)tv.add(hint);
   const score=x=>{const xv=vibeOf(x);let sh=0;for(const k of tv)if(xv.has(k))sh+=k[1]===':'?.5:1;
-    if(rfb.down.has(x.id))return -99;const xl=langOf(x),xd=dateOf(x),dy=td!=null&&xd!=null?Math.abs(td-xd):null;
+    if(rfb.down.has(x.id)||(!rfb.up.has(x.id)&&!passLearned(x,rlr)))return -99;const xl=langOf(x),xd=dateOf(x),dy=td!=null&&xd!=null?Math.abs(td-xd):null;
     return (x.arId===t.arId?2.4:0)+(mates.has(x.id)?2.5:0)+sh*3.2+(tv.size&&xv.size&&!sh?-4:0)+(tg&&x.g&&norm(x.g)===tg?2:0)+(dec!=null&&x.y&&Math.floor(parseInt(x.y,10)/10)===dec?1:0)
       +(tl&&xl?(tl===xl?1.6:-2.2):0)+(dy==null?0:dy<2?1.3:dy<5?.6:dy>12?-1:0)+Math.log(tasteW(x.id))*2.2+(rfb.up.has(x.id)?3:0)+Math.random()*1.4;};
   // solo lo que de verdad se parece (mismo rollo, artista o género); lo demás únicamente si no hay casi nada
   const rel=x=>{if(x.arId===t.arId||mates.has(x.id))return true;if(tg&&x.g&&norm(x.g)===tg)return true;const xv=vibeOf(x);let st=0;for(const k of tv)if(xv.has(k)){if(k[1]!==':')return true;if(++st>=2)return true;}return!tv.size&&!tg;};
   const every=[...S.tracks.values()].filter(x=>!x.test&&x.id!==t.id),goodAll=every.filter(rel),pool=(goodAll.length>=8?goodAll:every).filter(x=>!ex.has(x.id));
-  const out=[],per={};for(const [,x] of pool.map(x=>[score(x),x]).sort((a,b)=>b[0]-a[0])){
+  const out=[],per={};for(const [sc,x] of pool.map(x=>[score(x),x]).sort((a,b)=>b[0]-a[0])){if(sc<=-99&&pool.length>n*2)continue;
     if((per[x.arId]=(per[x.arId]||0)+1)>(x.arId===t.arId?3:2)&&pool.length>n)continue;out.push(x.id);if(out.length>=n)break;}
   const sh=shuffleArr(out.slice(0,Math.max(6,Math.round(n*.6)))).concat(out.slice(Math.max(6,Math.round(n*.6))));
   for(let i=1;i<sh.length;i++){const a=getTrack(sh[i-1]),b=getTrack(sh[i]);if(a&&b&&a.arId===b.arId){const j=sh.findIndex((id,k)=>k>i&&getTrack(id)&&getTrack(id).arId!==a.arId);if(j>0)[sh[i],sh[j]]=[sh[j],sh[i]];}}
@@ -949,6 +1017,7 @@ const ACT={
   carOn:()=>carOn(),carOff:()=>carOff(),
   soundTest:async()=>{await makeTests();P.play(collIds('test'),0,'test',{shuffle:false});},
   favTog:el=>toggleFav(el.dataset.k),
+  vote:el=>doVote(+el.dataset.v),
   playStn:el=>{const k=el.dataset.k,ids=collIds(k),st=PC.ST.find(x=>x.key===k);if(!ids.length){toast((st?st.full:'Emisora')+': sin canciones aún');return;}prefs.radio=false;P.radioSeed=null;P.play(ids,-1,k,{shuffle:true});try{LS.set('carStn',k);}catch{}},
   resumeState:()=>resumeFromState(),
 };
@@ -1177,7 +1246,7 @@ function renderPlayer(force){const n=nowInfo();if(force)$$('.mq').forEach(m=>del
   $$('[data-k=src]').forEach(el=>el.textContent=n.remote?'MANDO · '+n.remote.toUpperCase():(P.src&&P.current?collName(P.src).toUpperCase():''));
   updateTime();renderPresets();markCurrent();}
 function updateLikeUI(){renderPlayer();}
-function onTrackChange(){updateMS();renderPlayer();renderDials();saveState();presenceSoon();renderQueueIfOpen();}
+function onTrackChange(){updateMS();renderPlayer();renderDials();saveState();presenceSoon();renderQueueIfOpen();try{updVote();}catch{}}
 let lastMs=0;
 function updateTime(){const n=nowInfo(),pos=n.pos,dur=n.dur,f=dur?Math.max(0,Math.min(1,pos/dur)):0;
   $$('[data-k=pos]').forEach(el=>el.textContent=fmt(pos));$$('[data-k=dur]').forEach(el=>el.textContent=dur?'-'+fmt(Math.max(0,dur-pos)):'--:--');
@@ -1243,6 +1312,8 @@ function openNp(){const np=$('#np');np.hidden=false;np.textContent='';
           h('button',{class:'round big chrome','data-act':'toggle','data-k':'playbtn','aria-label':'Reproducir'},ic('play','width:28px;height:28px')),
           h('button',{class:'ibtn','data-act':'next','aria-label':'Siguiente'},ic('next')),
           h('button',{class:'ibtn','data-act':'repeat','data-k':'rep','aria-label':'Repetir'},ic('repeat'),h('span',{class:'led'}))),
+        h('div',{class:'np-row2','data-k':'voteRow',hidden:true,style:'align-items:center'},h('span',{class:'dim',style:'font-size:12px;letter-spacing:.06em;flex:1 1 100%;text-align:center'},'¿Encaja en ',h('b',{'data-k':'voteLbl'},''),'?'),
+          h('button',{class:'pbtn','data-act':'vote','data-v':'1','aria-pressed':'false'},'▲ Encaja'),h('button',{class:'pbtn','data-act':'vote','data-v':'-1','aria-pressed':'false'},'▼ No encaja')),
         h('div',{class:'np-row2'},h('button',{class:'pbtn','data-act':'like','data-k':'like'},ic('heart'),'Me gusta'),
           h('button',{class:'pbtn','data-act':'openQueue'},ic('queue'),'Cola'),h('button',{class:'pbtn','data-k':'devbtn','data-act':'openDevices'},ic('cast'),'Aparatos'),h('button',{class:'pbtn','data-act':'openEq'},ic('eq'),'Sonido'),
           h('button',{class:'pbtn','data-act':'go','data-v':'dj'},ic('dj'),'DJ')))));
@@ -1555,7 +1626,7 @@ document.addEventListener('scroll',()=>{$('#tip').hidden=true;},true);
 
 /* ===================== ajustes ===================== */
 function viewSettings(v){v.append(h('h1',null,'Ajustes'));
-  v.append(h('div',{class:'sec'},secH('Tus votos de emisoras'),h('div',{class:'note'},'En el coche, desliza la carátula hacia arriba si la canción encaja en la emisora o en la radio, y hacia abajo si no encaja (se salta y no vuelve a salir ahí). Aquí puedes copiar todos tus votos para pasárselos a Claude.'),
+  v.append(h('div',{class:'sec'},secH('Tus votos de emisoras'),h('div',{class:'note'},'En el coche desliza la carátula hacia arriba (encaja) o hacia abajo (no encaja). En el móvil y el ordenador tienes ▲ y ▼ junto a la canción. Con cada «no encaja» la emisora aprende por qué y quita lo parecido; con tu clave de Claude, además te explica en qué se equivocó. Aquí puedes copiar tus votos y lo aprendido.'),
     h('div',{class:'row'},h('button',{class:'pbtn',onclick:async()=>{const tx=votesText();try{await navigator.clipboard.writeText(tx);toast('Votos copiados');}catch{openSheet(h('textarea',{style:'width:100%;height:60vh'},tx));}}},ic('list'),'Copiar mis votos'))));
   const nm=h('input',{type:'text',id:'devName',value:device?device.name:'',maxlength:'30',autocomplete:'off'});
   nm.addEventListener('change',()=>{const val=nm.value.trim();if(!val||!device)return;device.name=val;LS.set('dev',device);presenceNow();toast('Guardado');});
@@ -2388,7 +2459,7 @@ class Component extends DCLogic {
     this.setState({ ph, pf, tr, lastTr, F0, sc });
   }
   go(d){ const n = this.songs().length; this.setState({ i: (this.state.i + d + n) % n, t: 0, ph: 'cover', pf: 0 }); }
-  say(m){ clearTimeout(this.mv); this.setState({ msg: m, mk: this.state.mk + 1 }); this.mv = setTimeout(() => this.setState({ msg: null }), 2000); }
+  say(m, ms){ clearTimeout(this.mv); this.setState({ msg: m, mk: this.state.mk + 1 }); this.mv = setTimeout(() => this.setState({ msg: null }), ms || 2000); }
   near(f){ const S = this.stations(); let b = 0; for (let k = 1; k < S.length; k++) if (Math.abs(S[k].f - f) < Math.abs(S[b].f - f)) b = k; const d = Math.abs(S[b].f - f); return { k: b, d, noise: d < 1.2 ? 0 : Math.min(1, (d - 1.2) / 2.5) }; }
   startNoise(){
     try {
@@ -4084,7 +4155,7 @@ function radioKind(t,k){const a=norm(t.a||''),g=norm(t.g||'');if(k==='fito')retu
   if(k==='hit')return /\bpop\b|dance|edm|electro.?pop/.test(g)&&!/rock|metal|punk/.test(g);return false;}
 let radioCache={sig:'',m:{}};
 function radioIds(k){const sig=S.tracks.size+':'+S.allIds.length+':'+DIA_KEY()+':'+FBV+':'+Object.keys(S.likes).length;if(radioCache.sig!==sig)radioCache={sig,m:{}};if(radioCache.m[k])return radioCache.m[k];
-  const FB=fbOf('rad:'+k);let ids=S.allIds.filter(id=>{const t=S.tracks.get(id);return t&&!FB.down.has(id)&&(FB.up.has(id)||radioKind(t,k));});
+  const FB=fbOf('rad:'+k),LR=learned('rad:'+k);let ids=S.allIds.filter(id=>{const t=S.tracks.get(id);if(!t||FB.down.has(id))return false;if(FB.up.has(id))return true;return(radioKind(t,k)||LR.inA.has(featOf(t).pa))&&passLearned(t,LR);});
   if(k==='rockes')ids=capArtists(ids,[[/\bmarea\b|\bkutxi\b/,1e9],[/platero/,4],[/extremoduro|\brobe\b/,30]],15); // que mande Marea y Platero apenas salga
   if(k==='hit'){ // radiofórmula: lo de los últimos años manda; nada de antes de 2008 salvo lo que te guste; pocos artistas españoles
     ids=ids.filter(id=>{const t=S.tracks.get(id),y=parseInt(t.y,10);return !(y>1900&&y<2008)||S.likes[id];});
@@ -4232,7 +4303,7 @@ class CarUI extends Component{
     this.setState({mode:m});this.say({shuf:'ALEATORIO',radio:'RADIO DE ESTA CANCIÓN',once:'ESTA SONARÁ UNA VEZ MÁS'}[m]);
     clearTimeout(this.cyT);this.cyT=setTimeout(()=>{const ok=this.applyMode(m);if(!ok)this.setState({mode:this.applied||'shuf'});else if(m==='radio')this.say('RADIO · '+(this.radioLb||'').toUpperCase());},1100);}
   setMode(m){const ok=this.applyMode(m);this.setState({mode:ok?m:(this.applied||'shuf')});}
-  vote(v){const r=stnVote(v);this.say(r.msg);if(r.ok&&v<0)setTimeout(()=>P.next(),700);}
+  vote(v){const r=stnVote(v);this.say(r.msg,1500);if(r.ok&&v<0)setTimeout(()=>P.next(),700);if(r.short)setTimeout(()=>this.say(String(r.short).toUpperCase(),3500),1600);}
   dblTap(){const n=performance.now();if(n-(this.lastTap||0)<420){this.lastTap=0;this.like();}else this.lastTap=n;}
   like(){const t=P.current,lk=this.state.likeK||0;if(!t||t.test){this.say('NADA QUE GUARDAR');return;}const v=!(S.likes[t.id]>0);toggleLike(t.id);this.setState({like:v,likeK:lk+1});this.say(v?'GUARDADA EN ME GUSTA':'QUITADA DE ME GUSTA');}
   fund(){const f=!(prefs.fx&&prefs.xf>0);if(f){prefs.fx=true;if(!(prefs.xf>0))prefs.xf=prefs.xf0||4;}else{prefs.xf0=prefs.xf||4;prefs.xf=0;}savePrefs();this.setState({fund:f});this.say(f?'FUNDIDO SÍ':'FUNDIDO NO');}
@@ -4747,7 +4818,8 @@ function pcCover(t){const cv=pcE('pcCv');if(!cv)return;const key=t?(t.c||'h:'+t.
 function pcSrcLabel(){if(S.ctrl)return 'MANEJANDO EL '+String(ctrlName()||'OTRO APARATO').toUpperCase();const src=P.src||'';if(PC.applied==='radio'&&P.radioSeed)return'RADIO · '+String(P.radioSeed.t||'').toUpperCase();
   const st=PC.ST.find(s=>s.key===src);if(st)return'EMISORA '+st.f+' Hz · '+st.full;if(!src)return'';if(src==='test')return'PRUEBA DE SONIDO';if(src==='search'||src==='search4')return'BÚSQUEDA';try{return String(collName(src)).toUpperCase();}catch{return'';}}
 function pcTrack(){if(!PC.on)return;const t=S.ctrl?nowInfo().t:P.current;const lk=!!(t&&S.likes[t.id]>0);
-  pcE('pcNow').innerHTML=t?pcCov(t.c,56,'',(t.t||'?')[0])+'<span style="min-width:0"><span class="t1 pc-ell" style="display:block" data-right="np">'+escH(t.t||'Sin título')+'</span><span class="t2 pc-ell" style="display:block" data-artist="'+escH(t.arId||'')+'">'+escH(t.a||'')+'</span></span><button class="pc-ib'+(lk?' on':'')+'" data-like="'+t.id+'" aria-label="Me gusta">'+(lk?PCI.heartF:PCI.heart)+'</button>'
+  pcE('pcNow').innerHTML=t?pcCov(t.c,56,'',(t.t||'?')[0])+'<span style="min-width:0"><span class="t1 pc-ell" style="display:block" data-right="np">'+escH(t.t||'Sin título')+'</span><span class="t2 pc-ell" style="display:block" data-artist="'+escH(t.arId||'')+'">'+escH(t.a||'')+'</span></span><button class="pc-ib'+(lk?' on':'')+'" data-like="'+t.id+'" aria-label="Me gusta">'+(lk?PCI.heartF:PCI.heart)+'</button>'+((()=>{const c=S.ctrl?null:fbContext();if(!c)return '';const fb=fbOf(c.key);
+      return '<button class="pc-ib'+(fb.up.has(t.id)?' on':'')+'" data-vote="1" title="Encaja en '+escH(c.name)+'" aria-label="Encaja en '+escH(c.name)+'" style="font-size:15px">▲</button><button class="pc-ib'+(fb.down.has(t.id)?' on':'')+'" data-vote="-1" title="No encaja en '+escH(c.name)+'" aria-label="No encaja en '+escH(c.name)+'" style="font-size:15px">▼</button>';})())
     :'<span class="t2" style="padding-left:8px">'+(S.tracks.size?'PULSA PLAY: SUENA LA EMISORA '+PC.ST[pcStn()].full:'SIN MÚSICA TODAVÍA')+'</span>';
   pcFillCovers(pcE('pcNow'));pcRenderRight();pcMarkPlaying();pcModesUI();
   if(PC.applied==='once'&&PC.onceId&&t&&t.id!==PC.onceId)pcApply(PC.prevMode||'shuf');}
@@ -4800,6 +4872,7 @@ function pcClick(e){const t=e.target;let b;
   if((b=t.closest('[data-gov]'))){pcGo({v:b.dataset.gov});return;}
   if((b=t.closest('[data-artist]'))&&b.dataset.artist){pcGo({v:'artist',k:'ar:'+b.dataset.artist});return;}
   if((b=t.closest('[data-album]'))&&b.dataset.album){pcGo({v:'coll',k:'al:'+b.dataset.album});return;}
+  if((b=t.closest('[data-vote]'))){doVote(+b.dataset.vote);return;}
   if((b=t.closest('[data-fav]'))){toggleFav(b.dataset.fav);return;}
   if((b=t.closest('[data-hdel]'))){SH.del(+b.dataset.hdel);pcRenderMain(true);return;}
   if((b=t.closest('[data-hclear]'))){SH.clear();pcRenderMain(true);return;}
