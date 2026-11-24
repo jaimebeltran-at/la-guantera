@@ -5,17 +5,41 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111214">
 <script>/* tres apps separadas: ?m=coche, ?m=ordenador o ?m=movil (o coche.html, ordenador.html, movil.html). Cada una abre siempre en su modo. */
-window.FORCE=({coche:'car',ordenador:'pc',pc:'pc',movil:'phone'})[new URLSearchParams(location.search).get('m')]||null;
-document.write('<link rel="manifest" href="'+(FORCE==='car'?'manifest-coche.webmanifest':FORCE==='pc'?'manifest-ordenador.webmanifest':FORCE==='phone'?'manifest-movil.webmanifest':'manifest.webmanifest')+'">');</script>
+window.GCFG={clientId:'199748027382-86vrm04ifjnn35rim51karirihofmt82.apps.googleusercontent.com',scope:'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.appdata',hd:'asturtalent.org'};
+/* al volver de Google (#access_token=… o #error=…) la dirección ha perdido ?m= y #coche: se recuperan de lo guardado antes de salir */
+window.GRET=(function(){try{if(/(^|[#&])(access_token|error)=/.test(location.hash)){var r=JSON.parse(sessionStorage.getItem('lg.ret')||'null');if(!r){var o=JSON.parse(localStorage.getItem('lg.oauth')||'null');if(o&&Date.now()-(o.at||0)<15*60e3)r=o.ret;}return r;}}catch(e){}return null;})();
+window.FORCE=({coche:'car',ordenador:'pc',pc:'pc',movil:'phone'})[new URLSearchParams(GRET?GRET.s||'':location.search).get('m')]||null;
+document.write('<link rel="manifest" href="'+(FORCE==='car'||(!FORCE&&(GRET?GRET.h:location.hash)==='#coche')?'manifest-coche.webmanifest':FORCE==='pc'?'manifest-ordenador.webmanifest':FORCE==='phone'?'manifest-movil.webmanifest':'manifest.webmanifest')+'">');
+/* entrar en Google sin ventanas: se va a Google y vuelve a esta misma carpeta (la dirección registrada) con el acceso detrás del #, que nunca llega a GitHub */
+window.gAuthURL=function(prompt,extra){var st=Math.random().toString(36).slice(2)+Date.now().toString(36);
+  var ret=Object.assign({s:location.search,h:location.hash,silent:prompt==='none',at:Date.now()},extra||{});
+  try{sessionStorage.setItem('lg.st',st);sessionStorage.setItem('lg.ret',JSON.stringify(ret));}catch(e){}
+  try{localStorage.setItem('lg.oauth',JSON.stringify({st:st,ret:ret,at:Date.now()}));}catch(e){} // por si el navegador vuelve en otra pestaña (sin la memoria de esta)
+  var em=null;try{em=JSON.parse(localStorage.getItem('lg.email')||'null');}catch(e){}
+  var p=new URLSearchParams({client_id:GCFG.clientId,redirect_uri:location.origin+location.pathname.replace(/[^\/]*$/,''),response_type:'token',scope:GCFG.scope,include_granted_scopes:'true',state:st,hd:GCFG.hd});
+  if(prompt)p.set('prompt',prompt);if(em)p.set('login_hint',em);return 'https://accounts.google.com/o/oauth2/v2/auth?'+p;};
+/* ¿se puede renovar el acceso a Google en silencio? Solo en la app publicada, con permiso dado antes y sin haber fallado hace poco */
+window.gSilentOK=function(){try{var q=new URLSearchParams(location.search);if(q.has('sim')||q.has('demo')||q.has('medir'))return false;
+  if(window.top!==window||!navigator.onLine||!/\.github\.io$/.test(location.hostname))return false;
+  var g=function(k){try{var v=localStorage.getItem('lg.'+k);return v==null?null:JSON.parse(v);}catch(e){return null;}};
+  return !!g('authed')&&Date.now()-(g('silentFail')||0)>30*60e3&&Date.now()-(g('silentAt')||0)>45e3;}catch(e){return false;}};
+/* hay Google al otro lado? (respuesta vacía de Google en menos de 2,5 s). Sin cobertura no se sale de la app: suena lo guardado */
+window.gReach=function(ms){return new Promise(function(res){var done=false,t=setTimeout(function(){done=true;res(false);},ms||2500);
+  try{fetch('https://www.gstatic.com/generate_204',{mode:'no-cors',cache:'no-store'}).then(function(){if(!done){clearTimeout(t);res(true);}},function(){if(!done){clearTimeout(t);res(false);}});}catch(e){clearTimeout(t);res(false);}});};
+/* al abrir: si el acceso caducó (o le queda poco), se pide otro antes de nada. Mientras se comprueba, el coche espera para no empezar a sonar y cortarse */
+window.__silent=(function(){try{if(GRET||/(^|[#&])(access_token|error)=/.test(location.hash))return Promise.resolve(false);var t=null;try{t=JSON.parse(localStorage.getItem('lg.tok')||'null');}catch(e){}
+  if(t&&t.e-Date.now()>15*60e3)return Promise.resolve(false);if(!gSilentOK())return Promise.resolve(false);
+  return gReach(2500).then(function(ok){if(!ok||!gSilentOK())return false;try{localStorage.setItem('lg.silentAt',JSON.stringify(Date.now()));}catch(e){}location.replace(gAuthURL('none'));return true;});}catch(e){return Promise.resolve(false);}})();
+</script>
 <link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="alternate icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+<style>*,*::before,*::after{box-sizing:border-box}html{background:#0e0f11}body{margin:0}img{max-width:100%}[hidden]{display:none!important}
 .pbtn[aria-pressed="true"]{background:linear-gradient(180deg,#ffc77a,#ff9d2e);color:#140802;border-color:transparent}
 </style>
 <title>Spoticar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=DotGothic16&family=Marcellus&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=DotGothic16&family=Marcellus&display=swap" media="print" onload="this.media='all'">
 <style>
 /* Salpicadero de un C220 de 2001 de noche: antracita, cromo satinado, nogal y la luz naranja del cuadro.
    Una sola apariencia oscura a propósito. Escritorio: barra lateral + contenido + frontal de radio abajo.
@@ -470,8 +494,7 @@ const TEST=new Map();
 const getTrack=id=>S.tracks.get(id)||TEST.get(id)||null;
 
 /* ===================== acceso a Google ===================== */
-const CFG={clientId:'199748027382-86vrm04ifjnn35rim51karirihofmt82.apps.googleusercontent.com',
-  scope:'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.appdata',hd:'asturtalent.org'};
+const CFG=window.GCFG;
 const G='https://www.googleapis.com/drive/v3',GU='https://www.googleapis.com/upload/drive/v3';
 const AUTH={token:null,exp:0,client:null,waiters:[],busy:false,lastAsk:0,
   ok(){if(!this.token){const s=LS.get('tok',null);if(s&&s.e>Date.now()){this.token=s.t;this.exp=s.e;}}return!!this.token&&Date.now()<this.exp;},
@@ -480,38 +503,52 @@ const AUTH={token:null,exp:0,client:null,waiters:[],busy:false,lastAsk:0,
     this.client=google.accounts.oauth2.initTokenClient({client_id:CFG.clientId,scope:CFG.scope,hd:CFG.hd,login_hint:S.email||undefined,
       callback:r=>this.done(r),error_callback:e=>this.fail((e&&e.type)||'popup')});return true;},
   done(r){this.busy=false;if(!r||r.error){this.fail((r&&r.error)||'error');return;}
-    this.token=r.access_token;this.exp=Date.now()+((+r.expires_in||3600)-120)*1000;LS.set('authed',true);LS.set('tok',{t:this.token,e:this.exp});
-    this.waiters.splice(0).forEach(w=>w.res(this.token));onAuth();},
+    this.token=r.access_token;this.exp=Date.now()+((+r.expires_in||3600)-120)*1000;LS.set('authed',true);LS.set('tok',{t:this.token,e:this.exp});LS.set('silentFail',0);
+    this.waiters.splice(0).forEach(w=>w.res(this.token));try{STREAM.send();}catch{}onAuth();},
   fail(c){this.busy=false;if(/popup/.test(String(c))&&!this.ok())openSheet(h('h3',null,'¿No se ha abierto Google?'),h('p',{class:'sub',style:'margin:0'},'Este navegador no ha dejado abrir la ventana de Google. Puedes entrar en esta misma pantalla.'),
       h('div',{class:'row',style:'justify-content:flex-end'},h('button',{class:'pbtn ghost',onclick:closeLayer},'Cancelar'),h('button',{class:'pbtn amber',onclick:()=>AUTH.redirect()},'Entrar en esta ventana')));
     this.waiters.splice(0).forEach(w=>w.rej(Object.assign(new Error(c),{code:'auth'})));renderSoon();},
   /* solo dentro de un toque o clic: Google abre una ventana un instante */
-  request(){this.lastAsk=Date.now();if(!this.init()){toast('No se pudo cargar el acceso de Google. Revisa la conexión.');return false;}
+  request(){this.lastAsk=Date.now();if(!this.init()){if(window.__gisErr)toast('No se pudo cargar el acceso de Google. Revisa la conexión.');loadGIS();return false;}
     if(this.busy)return true;this.busy=true;try{this.client.requestAccessToken({prompt:LS.get('authed',false)?'':'consent'});}catch{this.busy=false;return false;}return true;},
   get(wait){if(this.ok())return Promise.resolve(this.token);if(!wait)return Promise.reject(Object.assign(new Error('no_token'),{code:'no_token'}));
-    if(!this.busy)toast('Toca la pantalla para reconectar con Google',4000);
+    if(!this.busy){if(document.body.classList.contains('carmode')&&typeof CAR!=='undefined'&&CAR)CAR.say('TOCA PARA CONECTAR CON GOOGLE',4000);else toast('Toca la pantalla para reconectar con Google',4000);}
     return new Promise((res,rej)=>{const w={res,rej};this.waiters.push(w);setTimeout(()=>{const i=this.waiters.indexOf(w);if(i>=0){this.waiters.splice(i,1);rej(Object.assign(new Error('timeout'),{code:'no_token'}));}},120000);});},
-  redirect(){const st=rid(12);try{sessionStorage.setItem('lg.st',st);}catch{}
-    const p=new URLSearchParams({client_id:CFG.clientId,redirect_uri:location.origin+location.pathname,response_type:'token',scope:CFG.scope,include_granted_scopes:'true',state:st,hd:CFG.hd});
-    if(S.email)p.set('login_hint',S.email);saveStateNow();location.href='https://accounts.google.com/o/oauth2/v2/auth?'+p;},
-  signOut(){try{if(this.token&&window.google)google.accounts.oauth2.revoke(this.token,()=>{});}catch{}this.token=null;this.exp=0;LS.set('authed',false);LS.set('tok',null);renderAll();}};
+  redirect(){try{saveStateNow();}catch{}location.href=gAuthURL('');},
+  /* ¿el navegador deja sonar sin tocar? (Firefox lo dice; los demás, no se sabe) */
+  autoplay(){try{return navigator.getAutoplayPolicy?navigator.getAutoplayPolicy('mediaelement'):'unknown';}catch{return'unknown';}},
+  /* renovar sin ventanas: se va a Google y vuelve en un segundo; si estaba sonando, sigue por la canción siguiente */
+  async silentNow(resume){if(!gSilentOK())return false;if(!await gReach(2000)||!gSilentOK())return false;
+    try{if(resume)sessionStorage.setItem('lg.resume',JSON.stringify(Object.assign({at:Date.now()},resume)));}catch{}
+    try{saveStateNow();}catch{}LS.set('silentAt',Date.now());location.replace(gAuthURL('none'));return true;},
+  /* entre dos canciones, en el coche: si al acceso le quedan menos de 4 minutos, se renueva ahí mismo (un par de segundos de silencio) en vez de cortar después */
+  needBoundary(){return!S.ctrl&&document.body.classList.contains('carmode')&&LS.get('authed',false)&&navigator.onLine&&(!this.token||this.exp-Date.now()<4*60e3)&&this.autoplay()==='allowed'&&gSilentOK();},
+  async boundary(ni){if(!this.needBoundary())return false;const a=Math.max(0,ni-30);
+    return this.silentNow({q:P.q.slice(a,ni+300),qi:ni-a,src:P.src||'',sh:!!P.shuffle,rp:P.repeat,rs:P.radioSeed&&P.radioSeed.id||null,rh:P.radioHint||null,pos:0,car:typeof CAR!=='undefined'&&CAR?CAR.applied:null});},
+  signOut(){try{if(this.token&&window.google)google.accounts.oauth2.revoke(this.token,()=>{});}catch{}this.token=null;this.exp=0;LS.set('authed',false);LS.set('tok',null);try{STREAM.send();}catch{}renderAll();}};
 /* cualquier toque renueva el acceso si caduca pronto (la ventana de Google se abre y se cierra sola) */
-document.addEventListener('click',()=>{if(LS.get('authed',false)&&navigator.onLine&&AUTH.soon()&&!AUTH.busy&&Date.now()-AUTH.lastAsk>90e3)AUTH.request();},true);
+document.addEventListener('click',()=>{if(!LS.get('authed',false)||!navigator.onLine||AUTH.busy||Date.now()-AUTH.lastAsk<90e3)return;
+  if(document.body.classList.contains('carmode')){const left=AUTH.token?AUTH.exp-Date.now():0;if(left>5*60e3)return; // en el coche no se molesta mientras quede acceso
+    if(AUTH.autoplay()==='allowed'&&gSilentOK()){if(!P.current){AUTH.lastAsk=Date.now();AUTH.silentNow(null);}return;}} // sin ventanas: al abrir o entre dos canciones
+  else if(!AUTH.soon())return;
+  AUTH.request();},true);
+function loadGIS(){if(window.__gis||window.google&&google.accounts)return;window.__gis=1;const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;s.onload=()=>{try{gisReady();}catch{}};s.onerror=()=>{window.__gis=0;window.__gisErr=1;};document.head.append(s);}
 
-async function gfetch(url,opt={},wait=false){const tok=await AUTH.get(wait);
-  const r=await fetch(url,Object.assign({},opt,{headers:Object.assign({},opt.headers,{Authorization:'Bearer '+tok})}));
+async function gfetch(url,opt={},wait=false){const tok=await AUTH.get(wait);const o=Object.assign({},opt,{headers:Object.assign({},opt.headers,{Authorization:'Bearer '+tok})});delete o.ms;
+  if(opt.ms&&window.AbortController&&!o.signal){const ab=new AbortController();o.signal=ab.signal;setTimeout(()=>ab.abort(),opt.ms);} // con poca cobertura, mejor rendirse y reintentar que quedarse colgado
+  let r;try{r=await fetch(url,o);}catch(e){const to=e&&e.name==='AbortError';throw Object.assign(new Error(to?'timeout':'net'),{code:to?'timeout':'net'});}
   if(r.status===401){AUTH.token=null;AUTH.exp=0;LS.set('tok',null);renderSoon();throw Object.assign(new Error('auth'),{code:'auth'});}
   if(!r.ok)throw Object.assign(new Error('HTTP '+r.status),{code:'http',status:r.status});return r;}
-const gjson=(path,params,wait)=>gfetch(G+path+(params?'?'+new URLSearchParams(params):''),{},wait).then(r=>r.json());
+const gjson=(path,params,wait)=>gfetch(G+path+(params?'?'+new URLSearchParams(params):''),{ms:30000},wait).then(r=>r.json());
 
 /* archivos privados de la app en tu Drive (carpeta oculta "appDataFolder") */
 const AD={ids:null,
   async list(){const out={};let pt='';do{const p={spaces:'appDataFolder',fields:'nextPageToken,files(id,name,modifiedTime)',pageSize:1000,q:"mimeType='application/json'"};if(pt)p.pageToken=pt;
       const j=await gjson('/files',p);for(const f of j.files)if(!out[f.name]||f.modifiedTime>out[f.name].modifiedTime)out[f.name]=f;pt=j.nextPageToken;}while(pt);this.ids=out;return out;},
   async id(name){if(!this.ids)await this.list();return this.ids[name]&&this.ids[name].id;},
-  async read(name){const id=await this.id(name);if(!id)return null;try{return await(await gfetch(G+'/files/'+id+'?alt=media')).json();}catch(e){if(e.status===404){delete this.ids[name];return null;}throw e;}},
+  async read(name){const id=await this.id(name);if(!id)return null;try{return await(await gfetch(G+'/files/'+id+'?alt=media',{ms:90000})).json();}catch(e){if(e.status===404){delete this.ids[name];return null;}throw e;}},
   async write(name,obj){const body=JSON.stringify(obj);const id=await this.id(name);
-    if(id){try{await gfetch(GU+'/files/'+id+'?uploadType=media',{method:'PATCH',headers:{'Content-Type':'application/json'},body});return id;}catch(e){if(e.status!==404)throw e;delete this.ids[name];}}
+    if(id){try{const r=await gfetch(GU+'/files/'+id+'?uploadType=media&fields=id,modifiedTime',{method:'PATCH',headers:{'Content-Type':'application/json'},body});try{const j=await r.json();if(j&&j.modifiedTime&&this.ids&&this.ids[name])this.ids[name].modifiedTime=j.modifiedTime;}catch{}return id;}catch(e){if(e.status!==404)throw e;delete this.ids[name];}}
     const nid=await upload(name,new Blob([body],{type:'application/json'}));this.ids[name]={id:nid,name,modifiedTime:new Date().toISOString()};return nid;}};
 async function upload(name,blob){const fd=new FormData();fd.append('metadata',new Blob([JSON.stringify({name,parents:['appDataFolder']})],{type:'application/json'}));fd.append('file',blob);
   return(await(await gfetch(GU+'/files?uploadType=multipart&fields=id',{method:'POST',body:fd})).json()).id;}
@@ -520,11 +557,13 @@ async function upload(name,blob){const fd=new FormData();fd.append('metadata',ne
 const LIB={idx:null,
   async loadLocal(){try{const x=await IDB.get('kv','lib');if(x)this.set(x,false);}catch{}S.libReady=true;},
   set(x,keep=true){this.idx=x;rebuildIndex();S.libReady=true;if(keep)IDB.put('kv','lib',x).catch(()=>{});renderSoon();DL.sync();},
-  async pull(){const x=await AD.read('biblioteca.json');if(x&&x.tracks&&(!this.idx||(x.at||0)>(this.idx.at||0)))this.set(x);return x;},
+  /* el índice pesa varios MB: solo se baja si en Drive ha cambiado desde la última vez */
+  async pull(){const f=AD.ids&&AD.ids['biblioteca.json'],mt=f&&f.modifiedTime;if(mt&&this.idx&&mt===LS.get('libMT',''))return null;
+    const x=await AD.read('biblioteca.json');if(x&&x.tracks&&(!this.idx||(x.at||0)>(this.idx.at||0)))this.set(x);if(mt&&x)LS.set('libMT',mt);return x;},
   async save(){const loc=this.idx;loc.at=Date.now();
     try{const rem=await AD.read('biblioteca.json');if(rem&&rem.folder===loc.folder&&rem.tracks){for(const id in rem.tracks){const r=rem.tracks[id],l=loc.tracks[id];
       if(l&&r&&((r.x||0)>(l.x||0)||((r.x||0)===(l.x||0)&&(r.ix||0)>(l.ix||0))&&r.m===l.m))loc.tracks[id]=r;}}}catch{}
-    await AD.write('biblioteca.json',loc);IDB.put('kv','lib',loc).catch(()=>{});}};
+    await AD.write('biblioteca.json',loc);IDB.put('kv','lib',loc).catch(()=>{});const f=AD.ids&&AD.ids['biblioteca.json'];if(f&&f.modifiedTime)LS.set('libMT',f.modifiedTime);}};
 function rebuildIndex(){
   const src=(LIB.idx&&LIB.idx.tracks)||{};const tracks=new Map();
   for(const id in src){const e=src[id];if(e)tracks.set(id,Object.assign({},e,{id,f:e.m||'1',c:e.c||''}));}
@@ -546,15 +585,17 @@ function rebuildIndex(){
 
 /* ===================== listas, me gusta y ajustes, sincronizados ===================== */
 const SY={lists:{},likes:{},pending:new Set(),lastPull:0,
-  async loadLocal(){try{const x=await IDB.get('kv','sy');if(x){this.lists=x.lists||{};this.likes=x.likes||{};if(x.cfg)S.cfg=Object.assign(S.cfg,x.cfg);}}catch{}this.apply();},
+  async loadLocal(){try{const x=await IDB.get('kv','sy');if(x){this.lists=x.lists||{};this.likes=x.likes||{};if(x.cfg)S.cfg=Object.assign(S.cfg,x.cfg);this.local=true;}}catch{}this.apply();},
   saveLocal(){IDB.put('kv','sy',{lists:this.lists,likes:this.likes,cfg:S.cfg}).catch(()=>{});},
   apply(){const pl={};for(const [id,p] of Object.entries(this.lists))if(p&&!p.del)pl[id]=p;S.playlists=pl;
     const lk={};for(const [id,v] of Object.entries(this.likes))if(v>0)lk[id]=v;S.likes=lk;},
   merge(kind,rem){if(kind==='lists'){for(const [id,r] of Object.entries(rem||{})){const l=this.lists[id];if(r&&(!l||(r.up||0)>(l.up||0)))this.lists[id]=r;}}
     else if(kind==='likes'){for(const [id,r] of Object.entries(rem||{})){const l=this.likes[id];if(l==null||Math.abs(r)>Math.abs(l))this.likes[id]=r;}}
     else if(kind==='cfg'&&rem&&(rem.up||0)>(S.cfg.up||0))S.cfg=Object.assign(S.cfg,rem);},
-  async pullAll(){if(!AUTH.ok())return;this.lastPull=Date.now();
-    const [pl,lk,aj,st]=await Promise.all(['listas.json','megusta.json','ajustes.json','estado.json'].map(n=>AD.read(n).catch(()=>null)));
+  async pullAll(){if(!AUTH.ok())return;this.lastPull=Date.now();const mt=LS.get('adMT',{})||{};
+    const [pl,lk,aj,st]=await Promise.all(['listas.json','megusta.json','ajustes.json','estado.json'].map(n=>{const f=AD.ids&&AD.ids[n],m=f&&f.modifiedTime;
+      if(m&&n!=='estado.json'&&mt[n]===m&&this.local)return null;return AD.read(n).then(x=>{if(m&&x)mt[n]=m;return x;}).catch(()=>null);}));
+    LS.set('adMT',mt);
     if(pl)this.merge('lists',pl.lists);if(lk)this.merge('likes',lk.ids);if(aj)this.merge('cfg',aj);if(st)S.remoteState=st;
     this.apply();this.saveLocal();renderSoon();DL.sync();for(const k of [...this.pending])this.pushNow(k);},
   push(kind){this.saveLocal();this.apply();clearTimeout(this['t_'+kind]);this['t_'+kind]=setTimeout(()=>this.pushNow(kind),1500);},
@@ -583,7 +624,9 @@ function fbContext(){const src=P.src||'';if(/^rad:|^likes$/.test(src)){const st=
 const URB=c=>RADIO_RE.regg.test(c)||RADIO_RE.trap.test(c)||KIND_RE.regg.test(c);
 const capW=x=>String(x||'').replace(/\b\p{L}/gu,m=>m.toUpperCase());
 const stName=k=>{const st=PC.ST.find(x=>x.key==='rad:'+k);return st?st.full:k.toUpperCase()+' FM';};
-function featOf(t){if(t._ft)return t._ft;const as=artistsOf(t);return t._ft={pa:as[0]||'',co:as.slice(1),g:norm(t.g||'').split(/\s*[\/,;|]\s*/).filter(x=>x&&x.length>2),vb:[...vibeOf(t)].filter(v=>v[1]!==':')};}
+function featOf(t){if(t._ft)return t._ft;const as=artistsOf(t),f={pa:as[0]||'',co:as.slice(1),g:norm(t.g||'').split(/\s*[\/,;|]\s*/).filter(x=>x&&x.length>2)};
+  Object.defineProperty(f,'vb',{configurable:true,enumerable:true,get(){const v=[...vibeOf(t)].filter(x=>x[1]!==':');Object.defineProperty(f,'vb',{value:v,enumerable:true});return v;}}); // el estilo solo se calcula si hace falta (es lo caro)
+  return t._ft=f;}
 let lrnC={};
 function learned(key){const R=(S.cfg.rules||{})[key]||{};const sig=FBV+':'+Object.keys(S.likes).length+':'+(R.at||0);if(lrnC[key]&&lrnC[key].sig===sig)return lrnC[key];
   const kind=key.startsWith('rad:')?key.slice(4):null,fb=fbOf(key),dn={pa:{},co:{},g:{},vb:{}},up={pa:{},co:{},g:{},vb:{}};
@@ -597,7 +640,7 @@ function learned(key){const R=(S.cfg.rules||{})[key]||{};const sig=FBV+':'+Objec
   for(const [a,n] of Object.entries(up.pa))if(n>=2&&!(dn.pa[a]>=n))inA.add(a);
   for(const a of inA)ex.pa.delete(a);
   return lrnC[key]={sig,ex,inA,dn,up,why:R.why||[]};}
-function passLearned(t,L){const f=featOf(t);if(L.ex.pa.has(f.pa))return false;for(const c of f.co)if(L.ex.co.has(c))return false;for(const g of f.g)if(L.ex.g.has(g))return false;for(const v of f.vb)if(L.ex.vb.has(v))return false;return true;}
+function passLearned(t,L){const f=featOf(t);if(L.ex.pa.has(f.pa))return false;for(const c of f.co)if(L.ex.co.has(c))return false;for(const g of f.g)if(L.ex.g.has(g))return false;if(L.ex.vb.size)for(const v of f.vb)if(L.ex.vb.has(v))return false;return true;}
 function explainVote(c,v,t){const L=learned(c.key),f=featOf(t),An=capW(f.pa)||'este artista',kind=c.key.startsWith('rad:')?c.key.slice(4):null,out=[];let sh='';
   if(v>0){const core=kind&&radioKind(t,kind);
     if(L.inA.has(f.pa)&&!core){out.push('Meto más canciones de '+An+' en '+c.name+'.');sh='MÁS DE '+An;}
@@ -672,7 +715,7 @@ const DL={busy:false,left:0,
     const todo=[...this.want()].filter(id=>!S.dl.has(id)&&S.tracks.has(id));if(!todo.length)return;
     this.busy=true;this.left=todo.length;renderDlStatus();let fails=0;
     for(const id of todo){if(!navigator.onLine||!AUTH.ok())break;const t=S.tracks.get(id);if(t){try{
-        const b=await(await gfetch(G+'/files/'+id+'?alt=media')).blob();await IDB.put('audio',id,{b,f:t.f,sz:b.size,at:Date.now()});S.dl.add(id);if(t.c)COV.url(t.c);
+        const b=(await AC.get(id))||await readBlob(await gfetch(G+'/files/'+id+'?alt=media'));await IDB.put('audio',id,{b,f:t.f,sz:b.size,at:Date.now()});S.dl.add(id);if(t.c)COV.url(t.c);
       }catch(e){fails++;if(e&&e.name==='QuotaExceededError'){toast('No queda espacio en este aparato');break;}if(fails>6)break;}}
       this.left--;renderDlStatus();}
     this.busy=false;this.left=0;renderSoon();if(fails)toast('Algunas canciones no se pudieron descargar');},
@@ -728,19 +771,90 @@ const AE={decks:[$('#deckA'),$('#deckB')],cur:0,ctx:null,n:null,xf:false,urls:[n
   async resume(){this.ensure();if(this.ctx&&this.ctx.state!=='running'){try{await this.ctx.resume();}catch{}}},
   setLevel(i,v,ramp){if(!this.n)return;const g=this.n.dg[i].gain,t=this.ctx.currentTime;g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);if(ramp)g.linearRampToValueAtTime(v,t+ramp);else g.setValueAtTime(v,t);}};
 
-/* audio desde Drive: se baja la canción entera (unos segundos) y se dejan preparadas las siguientes */
+/* ===================== canciones guardadas en el aparato (caché automática) =====================
+   Todo lo que suena o se precarga se queda aquí (hasta ~1,5 GB; lo más antiguo se va). Así el coche arranca al instante
+   y sigue sonando sin cobertura o sin Google. Es otra base de datos, aparte de las «Descargas» que eliges tú. */
+const AC={db:null,dbp:null,ids:new Set(),sz:new Map(),used:0,max:1500*1048576,ok:false,
+  open(){if(this.db)return Promise.resolve(this.db);return this.dbp||(this.dbp=new Promise((res,rej)=>{let r;try{r=indexedDB.open('spoticar-audio',1);}catch(e){this.dbp=null;return rej(e);}
+    r.onupgradeneeded=()=>{const d=r.result;for(const n of ['b','m','k'])if(!d.objectStoreNames.contains(n))d.createObjectStore(n);};
+    r.onsuccess=()=>{this.db=r.result;this.db.onversionchange=()=>{try{this.db.close();}catch{}this.db=null;this.dbp=null;};res(this.db);};
+    r.onerror=()=>{this.dbp=null;rej(r.error);};r.onblocked=()=>{this.dbp=null;rej(new Error('blocked'));};}));},
+  async tx(st,mode,fn){const d=await this.open();return new Promise((res,rej)=>{const t=d.transaction(st,mode);const q=fn(t.objectStore(Array.isArray(st)?st[0]:st),t);
+    t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error);});},
+  async init(){try{const keys=await this.tx('m','readonly',s=>s.getAllKeys()),vals=await this.tx('m','readonly',s=>s.getAll());
+      keys.forEach((k,i)=>{const z=(vals[i]&&vals[i].sz)||0;this.ids.add(k);this.sz.set(k,z);this.used+=z;});this.ok=true;
+      try{const e=navigator.storage&&navigator.storage.estimate&&await navigator.storage.estimate();if(e&&e.quota)this.max=Math.max(150*1048576,Math.min(1500*1048576,e.quota*.35));}catch{}
+      this.evict();}catch(e){this.ok=false;}},
+  has(id){return this.ids.has(id);},
+  async get(id){if(!this.ids.has(id))return null;try{const b=await this.tx('b','readonly',s=>s.get(id));if(b&&b.size){this.touch(id);return b;}}catch{}this.forget(id);return null;},
+  touch(id){this.tx('m','readwrite',s=>{const r=s.get(id);r.onsuccess=()=>{const v=r.result;if(v){v.last=Date.now();s.put(v,id);}};}).catch(()=>{});},
+  async put(id,b){if(!this.ok||!b||b.size<50000||this.ids.has(id))return;
+    try{await this.tx(['b','m'],'readwrite',(s,t)=>{t.objectStore('b').put(b,id);t.objectStore('m').put({sz:b.size,at:Date.now(),last:Date.now()},id);});this.add(id,b.size);}
+    catch(e){if(e&&e.name==='QuotaExceededError'){this.max=Math.max(100*1048576,this.used*.8);this.evict();}}},
+  add(id,sz){if(!this.ids.has(id)){this.ids.add(id);this.sz.set(id,sz||0);this.used+=sz||0;}if(this.used>this.max)this.evict();},
+  forget(id){if(this.ids.delete(id)){this.used-=this.sz.get(id)||0;this.sz.delete(id);}},
+  async evict(){if(this.used<=this.max||this.ev)return;this.ev=true;
+    try{const keys=await this.tx('m','readonly',s=>s.getAllKeys()),vals=await this.tx('m','readonly',s=>s.getAll());const keep=new Set(P.q.slice(Math.max(0,P.qi-1),P.qi+12));
+      const old=keys.map((k,i)=>[k,(vals[i]&&vals[i].last)||0]).filter(x=>!keep.has(x[0])).sort((a,b)=>a[1]-b[1]);
+      for(const [k] of old){if(this.used<=this.max*.9)break;await this.tx(['b','m'],'readwrite',(s,t)=>{t.objectStore('b').delete(k);t.objectStore('m').delete(k);});this.forget(k);}}catch{}
+    this.ev=false;},
+  async clear(){try{await this.tx(['b','m'],'readwrite',(s,t)=>{t.objectStore('b').clear();t.objectStore('m').clear();});}catch{}this.ids.clear();this.sz.clear();this.used=0;}};
+/* ¿suena ya, sin esperar a la red? */
+const playable=id=>{if(S.dl.has(id)||AC.ids.has(id)||BL.mem.has(id))return true;const t=getTrack(id);return!!(t&&(t.test||t.demo));};
+const netOK=()=>navigator.onLine&&AUTH.ok();
+/* La primera de una emisora, mejor una que ya esté en el aparato: arranca al instante. Sin red o sin Google, primero todo lo guardado */
+function cachedFirst(q,at=0){if(!q.length||at>=q.length||playable(q[at]))return q;const r=q.slice();
+  if(!netOK()){const head=r.slice(0,at),rest=r.slice(at);return head.concat(rest.filter(playable),rest.filter(id=>!playable(id)));}
+  const j=r.findIndex((id,i)=>i>at&&i<at+40&&playable(id));if(j>0)[r[at],r[j]]=[r[j],r[at]];return r;}
+
+/* Streaming: la canción empieza a sonar en cuanto llegan los primeros trozos, a través del service worker (sw.js),
+   que pide los trozos a Drive con el acceso en la cabecera (nunca en la dirección) y la guarda entera al acabar */
+const STREAM={sent:0,busy:null,busyAt:0,fails:0,
+  on(){return!!(navigator.serviceWorker&&navigator.serviceWorker.controller)&&this.sent>Date.now()+30e3&&AUTH.ok()&&!(LS.get('noStream',0)>Date.now());},
+  async send(){const c=navigator.serviceWorker&&navigator.serviceWorker.controller;if(!c){this.sent=0;return false;}const tok=AUTH.ok()?{t:AUTH.token,e:AUTH.exp}:null;
+    try{const ch=new MessageChannel();const ok=await new Promise(res=>{const tt=setTimeout(()=>res(false),2500);ch.port1.onmessage=()=>{clearTimeout(tt);res(true);};c.postMessage({t:'tok',tok},[ch.port2]);});
+      this.sent=ok&&tok?tok.e:0;return ok;}catch{this.sent=0;return false;}},
+  url(t){return'stream/'+encodeURIComponent(t.id)+(t.sz>0?'?z='+t.sz:'');},
+  fail(){if(!navigator.onLine||!AUTH.ok())return;if(++this.fails>=3){LS.set('noStream',Date.now()+3*864e5);this.fails=0;}}}; // si falla tres veces seguidas teniendo red y Google, se deja de usar unos días
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message',e=>{const d=e.data||{};
+    if(d.t==='cached'&&d.id){AC.add(d.id,d.sz||0);if(STREAM.busy===d.id){STREAM.busy=null;STREAM.fails=0;BL.prefetch(prefetchN());}}
+    else if(d.t==='updated')swUpdated();});
+  const hadSW=!!navigator.serviceWorker.controller; // la primera vez que se instala no hay nada que actualizar
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{STREAM.sent=0;STREAM.send();if(hadSW)swUpdated();});}
+/* hay versión nueva de la app: se recarga sola al abrir si aún no suena nada (o en el coche, tras un rato en pausa); si no, al volver a abrirla */
+function swUpdated(){if(window.__swReload||Date.now()-LS.get('swReloadAt',0)<10*60e3)return;const go=()=>{if(window.__swReload)return;window.__swReload=1;LS.set('swReloadAt',Date.now());try{saveStateNow();}catch{}location.reload();};
+  if(performance.now()<25000&&!P.current&&!S.loading){go();return;}window.__swPending=true;}
+setInterval(()=>{if(window.__swPending&&!window.__swReload&&document.body.classList.contains('carmode')&&AE.el.paused&&!S.loading&&P.pausedAt&&Date.now()-P.pausedAt>90e3&&Date.now()-LS.get('swReloadAt',0)>10*60e3){window.__swReload=1;LS.set('swReloadAt',Date.now());location.reload();}},15000);
+const prefetchN=()=>document.body.classList.contains('carmode')?6:2;
+
+/* bajar una respuesta entera, pero sin quedarse colgado: si en 30 s no llega ni un trozo, se corta */
+async function readBlob(r,stall=30000){const rd=r.body&&r.body.getReader&&r.body.getReader();if(!rd)return r.blob();const parts=[];let dead=false;
+  for(;;){const tt=setTimeout(()=>{dead=true;try{rd.cancel();}catch{}},stall);let x;try{x=await rd.read();}finally{clearTimeout(tt);}
+    if(dead)throw Object.assign(new Error('stall'),{code:'timeout'});if(x.done)break;parts.push(x.value);}
+  return new Blob(parts,{type:r.headers.get('content-type')||'audio/mpeg'});}
+
+/* audio desde Drive: la canción entera (cuando no hay streaming) y las siguientes preparadas en el aparato */
 const BL={mem:new Map(),inflight:new Map(),
   get(t,wait){if(this.mem.has(t.id))return Promise.resolve(this.mem.get(t.id));if(this.inflight.has(t.id))return this.inflight.get(t.id);
-    const p=(async()=>{const b=await(await gfetch(G+'/files/'+t.id+'?alt=media',{},wait)).blob();this.mem.set(t.id,b);
-      while(this.mem.size>8){const k=[...this.mem.keys()].find(k=>k!==(P.current&&P.current.id));this.mem.delete(k);}return b;})();
+    const p=(async()=>{const b=await readBlob(await gfetch(G+'/files/'+t.id+'?alt=media',{},wait));this.mem.set(t.id,b);AC.put(t.id,b);
+      while(this.mem.size>3){const k=[...this.mem.keys()].find(k=>k!==(P.current&&P.current.id));this.mem.delete(k);}return b;})();
     this.inflight.set(t.id,p);p.finally(()=>this.inflight.delete(t.id)).catch(()=>{});return p;},
-  prefetch(n){if(!AUTH.ok()||!navigator.onLine)return;const ids=[];for(let i=1;i<=n;i++){const id=P.q[P.qi+i];if(id)ids.push(id);}
-    (async()=>{for(const id of ids){const t=getTrack(id);if(!t||t.test||S.dl.has(id)||this.mem.has(id))continue;try{await this.get(t,false);}catch{break;}}})();}};
-async function srcFor(t){if(t.test||t.demo)return t.url;
+  /* las siguientes de la cola, de una en una; si la que suena aún está llegando por streaming, se espera (no se reparte la poca cobertura) */
+  prefetch(n){clearTimeout(this.pt);if(!AUTH.ok()||!navigator.onLine)return;
+    if(STREAM.busy&&Date.now()-STREAM.busyAt<150e3){this.pt=setTimeout(()=>this.prefetch(n),8000);return;}
+    if(this.run)return;const ids=[];for(let i=1;i<=n;i++){const id=P.q[P.qi+i];if(id)ids.push(id);}
+    this.run=true;(async()=>{for(const id of ids){const t=getTrack(id);if(!t||playable(id))continue;if(!AUTH.ok()||!navigator.onLine)break;
+        try{const b=await this.get(t,false);if(this.mem.size>1&&!(P.current&&P.current.id===id))this.mem.delete(id);}catch{break;}}})().finally(()=>{this.run=false;});}};
+async function srcFor(t,o={}){if(t.test||t.demo)return t.url;
   if(S.dl.has(t.id)){try{const rec=await IDB.get('audio',t.id);if(rec&&rec.b)return URL.createObjectURL(rec.b);}catch{}}
-  if(!navigator.onLine&&!BL.mem.has(t.id))throw Object.assign(new Error('offline'),{code:'offline'});
+  if(BL.mem.has(t.id))return URL.createObjectURL(BL.mem.get(t.id));
+  {const b=await AC.get(t.id);if(b)return URL.createObjectURL(b);}
+  if(!navigator.onLine)throw Object.assign(new Error('offline'),{code:'offline'});
+  if(!AUTH.ok()&&!o.wait)throw Object.assign(new Error('no_token'),{code:'no_token'});
+  if(!o.noStream&&!BL.inflight.has(t.id)&&AUTH.ok()){if(!STREAM.on())await STREAM.send();if(STREAM.on()){STREAM.busy=t.id;STREAM.busyAt=Date.now();return STREAM.url(t);}}
   S.loading=t.id;renderPlayer();
-  try{return URL.createObjectURL(await BL.get(t,true));}finally{if(S.loading===t.id){S.loading=null;renderPlayer();}}}
+  try{return URL.createObjectURL(await BL.get(t,!!o.wait));}finally{if(S.loading===t.id){S.loading=null;renderPlayer();}}}
 function setDeckSrc(i,url){const old=AE.urls[i];if(old&&old.startsWith('blob:')&&!TESTURLS.has(old)&&old!==url)URL.revokeObjectURL(old);AE.urls[i]=url;AE.decks[i].src=url;}
 
 /* ===================== cola y reproducción ===================== */
@@ -752,26 +866,36 @@ const P={q:[],orig:null,qi:-1,shuffle:false,repeat:'off',src:'',
     if(o.shuffle!==undefined)this.shuffle=o.shuffle;try{noteCtx(src,ids,start);}catch{}
     if(start<0||start>=ids.length)start=this.shuffle?Math.floor(Math.random()*ids.length):0;
     this.orig=ids.slice();this.src=src;
-    if(this.shuffle&&/^(rad:|likes$)/.test(src)&&typeof radioOrder==='function'){this.q=radioOrder(src,ids);await this.load(0);}
-    else if(this.shuffle){const first=ids[start];this.q=[first,...shuffleArr(ids.filter((_,i)=>i!==start))];await this.load(0);}
+    if(this.shuffle&&/^(rad:|likes$)/.test(src)&&typeof radioOrder==='function'){this.q=cachedFirst(radioOrder(src,ids));await this.load(0);}
+    else if(this.shuffle){const first=ids[start];this.q=[first,...shuffleArr(ids.filter((_,i)=>i!==start))];if(o.anyFirst||src==='all')this.q=cachedFirst(this.q);await this.load(0);}
     else{this.q=ids.slice();await this.load(start);}},
-  async load(i,{autoplay=true,pos=0}={}){endListen();if(AE.xf)cancelXf();
-    this.qi=i;const lt=this.lt=(this.lt||0)+1;const t=this.current;if(!t)return;onTrackChange();let url;
-    try{url=await srcFor(t);}catch(e){if(this.lt!==lt)return;AE.errs++;
-      toast(e.code==='offline'?'Sin conexión y «'+(t.t||'')+'» no está descargada':e.code==='no_token'||e.code==='auth'?'Toca la pantalla para reconectar con Google':'No se pudo cargar «'+(t.t||'')+'»');
+  async load(i,{autoplay=true,pos=0,noStream=false}={}){endListen();if(AE.xf)cancelXf();
+    this.qi=i;const lt=this.lt=(this.lt||0)+1;const t=this.current;if(!t)return;onTrackChange();let url;const car=document.body.classList.contains('carmode');STREAM.busy=null;
+    try{url=await srcFor(t,{wait:!car,noStream:noStream||this.noStreamFor===t.id});}catch(e){if(this.lt!==lt)return;
+      if(['offline','no_token','auth','net','timeout'].includes(e.code)&&this.jumpPlayable(i,lt,{autoplay}))return; // sin red o sin Google: otra que ya esté en el aparato
+      AE.errs++;
+      if(car&&(e.code==='no_token'||e.code==='auth')){try{CAR.say('TOCA PARA CONECTAR CON GOOGLE',5000);}catch{}}
+      else toast(e.code==='offline'?'Sin conexión y «'+(t.t||'')+'» no está descargada':e.code==='no_token'||e.code==='auth'?'Toca la pantalla para reconectar con Google':'No se pudo cargar «'+(t.t||'')+'»');
       if(e.code!=='no_token'&&e.code!=='auth'&&AE.errs<4&&this.qi+1<this.q.length)setTimeout(()=>{if(this.lt===lt)this.load(this.qi+1);},1200);else AE.errs=0;renderPlayer();return;}
     if(this.lt!==lt)return;
     setDeckSrc(AE.cur,url);
     if(pos>0){const d=AE.el,once=()=>{try{d.currentTime=pos;}catch{}d.removeEventListener('loadedmetadata',once);};d.addEventListener('loadedmetadata',once);}
+    if(/^stream\//.test(url))streamWatch(AE.cur,t.id,lt);
     startListen(t);renderPlayer();saveState();if(autoplay)await this.resume();},
+  /* la que tocaba no se puede bajar ahora: se adelanta la primera guardada de la cola (la otra no se pierde, se queda más adelante) */
+  jumpPlayable(i,lt,o={}){let j=-1;for(let k=i+1;k<Math.min(this.q.length,i+400);k++)if(playable(this.q[k])){j=k;break;}
+    if(j<0){const src=this.src||'',pool=/^(rad:|likes|all|pl:|al:|ar:)/.test(src)?collIds(src):[...AC.ids].filter(id=>S.tracks.has(id)),recent=new Set(this.q.slice(Math.max(0,i-80),i));
+      const c=shuffleArr(pool.filter(id=>playable(id)&&!recent.has(id)&&id!==this.q[i]));if(!c.length)return false;this.q.splice(i+1,0,c[0]);j=i+1;}
+    [this.q[i],this.q[j]]=[this.q[j],this.q[i]];setTimeout(()=>{if(this.lt===lt)this.load(i,o);},0);return true;},
   async resume(){if(S.ctrl)return remoteCmd({op:'play1'});if(!this.current)return this.toggle();await AE.resume();
-    try{await AE.el.play();}catch(e){if(e&&e.name==='NotAllowedError')toast('Toca ▶ para empezar');else if(e&&e.name!=='AbortError'){console.warn(e);}}},
-  pause(){if(S.ctrl)return remoteCmd({op:'pause'});P.selfPause=performance.now();AE.decks.forEach(d=>d.pause());},
+    try{await AE.el.play();}catch(e){if(e&&e.name==='NotAllowedError'){if(document.body.classList.contains('carmode')){try{CAR.say('TOCA LA PANTALLA PARA EMPEZAR',7000);}catch{}}else toast('Toca ▶ para empezar');}else if(e&&e.name!=='AbortError'){console.warn(e);}}},
+  pause(){if(S.ctrl)return remoteCmd({op:'pause'});P.selfPause=performance.now();P.pausedAt=Date.now();AE.decks.forEach(d=>d.pause());},
   async toggle(){if(S.ctrl)return remoteCmd({op:'toggle'});
     if(!this.current&&document.body.classList.contains('carmode')){let c=null;try{c=CAR;}catch{}if(c&&c.tuneCurrent&&c.tuneCurrent())return;}
     if(!this.current){const ids=S.allIds.length?S.allIds:collIds('test');if(!ids.length){await makeTests();return this.play(collIds('test'),0,'test');}return this.play(ids,-1,'all',{shuffle:true});}
     if(AE.el.paused)await this.resume();else this.pause();},
   async next(auto=false){if(S.ctrl&&!auto)return remoteCmd({op:'next'});const i=this.nextIdx(auto);
+    if(auto&&i!=null&&i!==this.qi&&AUTH.needBoundary()&&await AUTH.boundary(i))return;
     if(i==null){if(prefs.radio&&this.radioSeed){const recent=new Set(this.q.slice(-Math.min(150,Math.max(8,Math.floor(S.tracks.size/3)))));let more=similarTo(this.radioSeed,25,recent,this.radioHint);if(!more.length)more=similarTo(this.radioSeed,25,new Set([this.current&&this.current.id]),this.radioHint);if(more.length){this.q.push(...more);return this.load(this.qi+1);}}
       else if(document.body.classList.contains('carmode')&&/^(rad:|likes|all)/.test(this.src||'')){const cur=this.current,ids=/^(rad:|likes)/.test(this.src)?radioOrder(this.src,collIds(this.src),this.q.slice(-60)):shuffleArr(collIds(this.src).filter(id=>!cur||id!==cur.id));if(ids.length){this.q.push(...ids);return this.load(this.qi+1);}}
       else if(auto&&prefs.radio){const more=similarTo(this.current,25,new Set(this.q));if(more.length){this.q.push(...more);if(this.orig)this.orig.push(...more);return this.load(this.qi+1);}}
@@ -810,22 +934,28 @@ function similarTo(t,n,ex,hint){if(!t||t.test||!S.tracks.size)return[];const mat
   for(let i=1;i<sh.length;i++){const a=getTrack(sh[i-1]),b=getTrack(sh[i]);if(a&&b&&a.arId===b.arId){const j=sh.findIndex((id,k)=>k>i&&getTrack(id)&&getTrack(id).arId!==a.arId);if(j>0)[sh[i],sh[j]]=[sh[j],sh[i]];}}
   return sh;}
 
+/* si el streaming no arranca en 20 s (o falla), la misma canción se baja entera por el camino de siempre */
+function streamFallback(t,pos){STREAM.fail();STREAM.busy=null;P.noStreamFor=t.id;setTimeout(()=>{if(P.current&&P.current.id===t.id)P.load(P.qi,{pos,noStream:true});},300);}
+function streamWatch(i,id,lt){const d=AE.decks[i],t0=Date.now();const iv=setInterval(()=>{if(P.lt!==lt||!P.current||P.current.id!==id||!/^stream\//.test(d.getAttribute('src')||'')){clearInterval(iv);return;}
+    if(d.readyState>=3||d.currentTime>0||(d.paused&&d.readyState>=1)){clearInterval(iv);STREAM.fails=0;return;}if(Date.now()-t0>25000&&navigator.onLine&&!(d.buffered&&d.buffered.length)){clearInterval(iv);streamFallback(P.current,0);}},1000);} // solo si no ha llegado nada: con poca cobertura, mejor esperar que empezar de cero
 /* eventos de las platinas */
 AE.decks.forEach((d,i)=>{
   d.addEventListener('timeupdate',()=>{if(i!==AE.cur)return;tickListen();maybeXf();updateTime();});
   d.addEventListener('ended',()=>{if(i!==AE.cur||AE.xf)return;P.next(true);});
-  d.addEventListener('playing',()=>{if(i===AE.cur){AE.errs=0;renderPlayer();wake();updateMSPos();BL.prefetch(document.body.classList.contains('carmode')?6:2);}});
+  d.addEventListener('playing',()=>{if(i===AE.cur){AE.errs=0;P.pausedAt=0;renderPlayer();wake();updateMSPos();BL.prefetch(prefetchN());}});
   d.addEventListener('pause',()=>{if(i===AE.cur&&!AE.xf){renderPlayer();saveStateNow();presenceSoon();}});
   d.addEventListener('loadedmetadata',()=>{if(i===AE.cur){renderDials();updateMSPos();}});
   d.addEventListener('seeking',()=>{if(i===AE.cur)L.last=null;});
   d.addEventListener('error',()=>{if(i!==AE.cur||!d.getAttribute('src'))return;const t=P.current;if(!t)return;
+    if(/^stream\//.test(d.getAttribute('src'))&&P.noStreamFor!==t.id){streamFallback(t,d.currentTime||0);return;}
     AE.errs++;toast('No se pudo reproducir «'+(t.t||'')+'»');
     if(AE.errs<4)setTimeout(()=>{if(P.current&&P.current.id===t.id)P.next(true);},1200);else{AE.errs=0;renderPlayer();}});});
 
-function maybeXf(){if(AE.xf||!AE.n||!prefs.fx||prefs.xf<=0||P.repeat==='one')return;const d=AE.el,dur=d.duration;
+function maybeXf(){if(AE.xf||!AE.n||!prefs.fx||prefs.xf<=0||P.repeat==='one'||AUTH.needBoundary())return;const d=AE.el,dur=d.duration;
   if(!isFinite(dur)||dur<prefs.xf*2+6||dur-d.currentTime>prefs.xf)return;const ni=P.nextIdx(false);if(ni==null)return;startXf(ni);}
 async function startXf(ni){AE.xf=true;const t=getTrack(P.q[ni]);if(!t){AE.xf=false;return;}const o=1-AE.cur;
-  const url=await srcFor(t);setDeckSrc(o,url);const od=AE.decks[o];AE.setLevel(o,0);
+  let url;try{url=await srcFor(t,{});}catch{AE.xf=false;return;} // no se puede preparar: se deja acabar y la siguiente se busca como siempre
+  if(!AE.xf)return;setDeckSrc(o,url);const od=AE.decks[o];AE.setLevel(o,0);
   try{await od.play();}catch{AE.xf=false;return;}
   const secs=prefs.xf,old=AE.cur;AE.setLevel(o,1,secs);AE.setLevel(old,0,secs);endListen();AE.cur=o;P.qi=ni;startListen(t);onTrackChange();
   AE.xfTimer=setTimeout(()=>{AE.decks[old].pause();AE.xf=false;},secs*1000+120);}
@@ -921,7 +1051,8 @@ function presetMap(){const m={};for(const [id,p] of Object.entries(S.playlists))
 
 let renderTimer=0;
 function renderSoon(){clearTimeout(renderTimer);renderTimer=setTimeout(renderAll,140);}
-function renderAll(){renderNav();renderSideLists();renderView(false);renderPlayer();renderDials();renderPresets();if(document.body.classList.contains('carmode'))renderCar();}
+function renderAll(){if(document.body.classList.contains('carmode')){S.appDirty=true;renderCar();return;} // en el coche, la app de detrás no se ve: se dibuja al salir
+  S.appDirty=false;renderNav();renderSideLists();renderView(false);renderPlayer();renderDials();renderPresets();}
 
 function renderView(force){const view=$('#view'),main=$('#main');
   const ae=document.activeElement;if(!force&&ae&&view.contains(ae)&&/INPUT|TEXTAREA|SELECT/.test(ae.tagName)){if(S.view==='buscar')renderSearchResults();return;}
@@ -1367,7 +1498,7 @@ setInterval(()=>{if(window.FORCE&&FORCE!=='phone')forceBack();},700);
 function carOn(){if(typeof PC!=='undefined'&&PC.on)pcOff();LS.set('lastMode','car');document.body.classList.add('carmode');if(!prefs.fx||!(prefs.xf>0)){prefs.fx=true;if(!(prefs.xf>0))prefs.xf=4;try{savePrefs();}catch{}}goFull();if(!window.__gf){window.__gf=1;['pointerup','click','touchend','keydown'].forEach(e=>document.addEventListener(e,()=>{if(document.body.classList.contains('carmode'))goFull();},{capture:true,passive:true}));}closeNp();closeLayer();$('#car').hidden=false;$('#app').setAttribute('aria-hidden','true');renderCar();wake();
   try{history.replaceState(null,'','#coche');}catch{}}
 function carOff(){LS.set('lastMode','app');document.body.classList.remove('carmode');if(typeof CAR!=='undefined'&&CAR){try{CAR.unmount();}catch(e){}CAR=null;}$('#car').hidden=true;$('#car').textContent='';$('#app').removeAttribute('aria-hidden');
-  try{if(wl)wl.release();}catch{}wl=null;try{history.replaceState(null,'','#'+S.view);}catch{}renderPlayer(true);}
+  try{if(wl)wl.release();}catch{}wl=null;try{history.replaceState(null,'','#'+S.view);}catch{}if(S.appDirty)renderAll();renderPlayer(true);}
 function renderCarOld(){const c=$('#car');c.textContent='';const pm=presetMap();c.classList.toggle('lite',!prefs.viz);
   c.append(h('div',{class:'trim wood'}),
     h('div',{class:'car-main'},h('div',{class:'cvbox','data-k':'cover'}),
@@ -1640,6 +1771,12 @@ function viewSettings(v){v.append(h('h1',null,'Ajustes'));
     tog('radio','Cuando se acabe la cola, seguir con canciones parecidas','radio'),
     h('div',{class:'row'},h('button',{class:'pbtn','data-act':'openEq'},ic('eq'),'Sonido y ecualizador'),h('button',{class:'pbtn','data-act':'carOn'},ic('car'),'Modo coche ahora'),
       h('button',{class:'pbtn','data-act':'libTab','data-k':'descargas'},ic('dl'),'Descargas'))));
+  {const ap=AUTH.autoplay(),mb=Math.round(AC.used/1048576);
+  v.append(h('div',{class:'sec'},secH('Arranque rápido'),
+    h('div',{class:'sub'},plural(AC.ids.size,'canción guardada','canciones guardadas')+' en este aparato ('+mb+' MB de '+Math.round(AC.max/1048576)+'). Con ellas arranca al instante y sigue sonando sin cobertura; se van renovando solas.'),
+    h('div',{class:'sub'},ap==='allowed'?'Este navegador deja sonar sin tocar: el coche arranca solo.':ap==='unknown'?'':'Este navegador pide un toque para empezar a sonar (el primero, en cualquier sitio de la pantalla).'),
+    h('div',{class:'note'},h('b',null,'En la tablet del coche (Firefox). '),'Abre coche.html, menú ⋮ → «Instalar» (o «Añadir a pantalla de inicio») y ábrela desde ese icono: sale a pantalla completa, sin barra. Y en el candado de la dirección → Permisos → Reproducción automática → «Permitir audio y vídeo»: así suena sola al encender.'),
+    h('div',{class:'row'},h('button',{class:'pbtn ghost',onclick:()=>confirmSheet('Vaciar canciones guardadas','Se borran las '+AC.ids.size+' canciones guardadas automáticamente en este aparato (tus Descargas no se tocan). Se volverán a guardar al escucharlas.','Vaciar',async()=>{await AC.clear();toast('Hecho');renderSoon();})},'Vaciar canciones guardadas'))));}
   v.append(h('div',{class:'sec'},secH('Prueba de sonido'),h('p',{class:'sub',style:'margin:0;max-width:62ch'},'Tres pistas generadas aquí mismo, sin gastar datos: izquierda y derecha, un barrido de graves (pon el volumen moderado) y una melodía para probar el ecualizador, los fundidos y que siga sonando con otra app delante.'),
     h('div',null,h('button',{class:'pbtn','data-act':'soundTest'},ic('wave'),'Poner la prueba de sonido'))));
   const key=h('input',{type:'password',id:'apiKey',value:S.cfg.apiKey||'',placeholder:'sk-ant-…',autocomplete:'off',spellcheck:'false'});
@@ -1713,20 +1850,45 @@ const SYNC={running:false,phase:'',done:0,total:0,cancel:false,deep:false,last:L
             if(f.mimeType==='application/vnd.google-apps.folder'){info.set(f.id,[...path,f.name]);next.push(f.id);folders++;}
             else if(/^audio\//.test(f.mimeType)||AUDIO_EXT.test(f.name))out.push({id:f.id,n:f.name,mt:f.mimeType,sz:+f.size||0,m:f.modifiedTime,path});}
           pt=j.nextPageToken;this.phase='Buscando canciones… '+out.length+' (en '+folders+' carpetas)';renderSyncSoon();}while(pt&&!this.cancel);}
-      level=next;}return out;},
+      level=next;}out.folders=info;return out;},
   async run(deep){if(this.running)return;if(!AUTH.ok()){toast('Conéctate con Google primero');return;}
     Object.assign(this,{running:true,cancel:false,deep,done:0,total:0,phase:'Buscando la carpeta «'+S.cfg.folder+'»…'});renderSyncSoon();renderSoon();
-    try{const fid=await this.folderId();const files=await this.listAudio(fid);if(this.cancel)throw{code:'cancel'};
+    try{let spt=null;try{spt=(await gjson('/changes/startPageToken',{supportsAllDrives:true})).startPageToken;}catch{}
+      const fid=await this.folderId();const files=await this.listAudio(fid);if(this.cancel)throw{code:'cancel'};
       const idx=LIB.idx&&LIB.idx.folder===fid?structuredClone(LIB.idx):{v:1,folder:fid,tracks:{}};const seen=new Set();let added=0,removed=0;
       for(const f of files){seen.add(f.id);const e=idx.tracks[f.id];
         if(!e||e.m!==f.m){idx.tracks[f.id]=Object.assign(nameMeta(f.n,f.path),{sz:f.sz,m:f.m,mt:f.mt,fn:f.n,ad:e?e.ad:Date.now(),x:0,ix:Date.now()});added++;}}
       for(const id in idx.tracks)if(!seen.has(id)){delete idx.tracks[id];removed++;}
       LIB.idx=idx;rebuildIndex();renderSoon();if(added||removed||!LIB.idx.at)await LIB.save();
       this.last=Date.now();LS.set('lastSync',this.last);
+      if(spt&&files.folders){try{await IDB.put('kv','syncFd',{root:fid,f:Object.fromEntries(files.folders)});LS.set('chgTok',spt);LS.set('fullSync',Date.now());}catch{}}
       this.phase=plural(files.length,'canción','canciones')+' en tu Drive'+(added?' · '+plural(added,'nueva','nuevas'):'')+(removed?' · '+plural(removed,'quitada','quitadas'):'');
       if(deep)await this.tags(idx);}
     catch(e){this.phase=e&&e.code==='no_folder'?'No encuentro la carpeta «'+S.cfg.folder+'» en tu Drive. Revisa el nombre en Ajustes de Tu Drive.':e&&e.code==='cancel'?'Parado.':
       e&&(e.code==='auth'||e.code==='no_token')?'Se ha cortado la conexión con Google. Toca Reconectar y sigue.':'Algo ha fallado ('+((e&&(e.status||e.code))||'error')+'). Vuelve a intentarlo.';}
+    this.running=false;renderSync();renderSoon();},
+  async quick(){if(this.running||!AUTH.ok())return;let fd=null;try{fd=await IDB.get('kv','syncFd');}catch{}const pt=LS.get('chgTok','');
+    if(!pt||!fd||!fd.f||!LIB.idx||LIB.idx.folder!==fd.root||Date.now()-LS.get('fullSync',0)>7*864e5)return this.run(false); // una vez por semana, repaso completo
+    this.running=true;this.phase='Buscando canciones nuevas…';renderSyncSoon();
+    try{const ch=[];let next=pt,tok=null;
+      while(next){const j=await gjson('/changes',{pageToken:next,pageSize:1000,includeRemoved:true,supportsAllDrives:true,includeItemsFromAllDrives:true,
+          fields:'nextPageToken,newStartPageToken,changes(fileId,removed,file(id,name,mimeType,size,modifiedTime,parents,trashed))'});
+        ch.push(...(j.changes||[]));next=j.nextPageToken||null;if(j.newStartPageToken)tok=j.newStartPageToken;if(ch.length>30000)throw{code:'big'};}
+      const F=fd.f,FOL='application/vnd.google-apps.folder';let full=false;F[fd.root]=F[fd.root]||[];
+      const fol=ch.filter(c=>c.file&&c.file.mimeType===FOL);
+      for(const c of ch)if((c.removed||(c.file&&c.file.trashed))&&F[c.fileId]&&c.fileId!==fd.root)full=true; // se borró una carpeta: mejor repasarlo todo
+      for(let grew=true;grew&&!full;){grew=false;for(const c of fol){const f=c.file;if(f.trashed)continue;const par=(f.parents||[]).find(x=>F[x]),path=par?[...F[par],f.name]:null;
+          if(F[f.id]){if(!path||path.join('/')!==F[f.id].join('/'))full=true;}else if(path){F[f.id]=path;grew=true;}}}
+      if(full){this.running=false;return this.run(false);} // carpeta movida o renombrada: el nombre de artista y álbum sale de ahí
+      const idx=LIB.idx;let added=0,removed=0;
+      for(const c of ch){const id=c.fileId,f=c.file;if(f&&f.mimeType===FOL)continue;
+        const par=f&&!f.trashed&&!c.removed?(f.parents||[]).find(x=>F[x]):null,isA=f&&(/^audio\//.test(f.mimeType||'')||AUDIO_EXT.test(f.name||''));
+        if(!par||!isA){if(idx.tracks[id]){delete idx.tracks[id];removed++;}continue;}
+        const e=idx.tracks[id];if(!e||e.m!==f.modifiedTime){idx.tracks[id]=Object.assign(nameMeta(f.name,F[par]),{sz:+f.size||0,m:f.modifiedTime,mt:f.mimeType,fn:f.name,ad:e?e.ad:Date.now(),x:0,ix:Date.now()});added++;}}
+      if(added||removed){rebuildIndex();renderSoon();IDB.put('kv','lib',idx).catch(()=>{});setTimeout(()=>LIB.save().catch(()=>{}),document.body.classList.contains('carmode')?60000:0);}
+      await IDB.put('kv','syncFd',fd).catch(()=>{});if(tok)LS.set('chgTok',tok);this.last=Date.now();LS.set('lastSync',this.last);
+      this.phase=added||removed?(added?plural(added,'canción nueva','canciones nuevas'):'')+(added&&removed?' · ':'')+(removed?plural(removed,'quitada','quitadas'):''):'Tu biblioteca está al día';}
+    catch(e){if(e&&e.code==='big'){this.running=false;return this.run(false);}this.phase=e&&(e.code==='auth'||e.code==='no_token')?'Se ha cortado la conexión con Google.':'No se pudo mirar si hay canciones nuevas.';}
     this.running=false;renderSync();renderSoon();},
   async tags(idx){const todo=Object.keys(idx.tracks).filter(id=>!idx.tracks[id].x);this.total=todo.length;this.done=0;if(!todo.length){return;}
     let since=0;const covers=idx.cv||(idx.cv={});
@@ -1769,13 +1931,16 @@ function renderSync(){const box=$('#syncBox');if(!box)return;box.textContent='';
 
 /* al conectar con Google */
 let firstAuth=true;
-async function onAuth(){renderAll();const was=firstAuth;firstAuth=false;
+async function onAuth(){renderAll();const was=firstAuth;firstAuth=false;STREAM.send();
   if(!S.email){try{const j=await gjson('/about',{fields:'user(emailAddress)'});S.email=j.user.emailAddress;LS.set('email',S.email);}catch{}}
   try{await AD.list();}catch{}
   await Promise.all([SY.pullAll().catch(()=>{}),LIB.pull().catch(()=>{}),loadStats()]);
-  if(was){const pend=device&&device.kind==='pc'&&(!LIB.idx||Object.values(LIB.idx.tracks).some(e=>!e.x));const stale=Date.now()-SYNC.last>15*60e3;if(!LIB.idx||stale||pend)SYNC.run(pend);}
+  if(was){const pend=device&&device.kind==='pc'&&(!LIB.idx||Object.values(LIB.idx.tracks).some(e=>!e.x));
+    // canciones nuevas: si no hay biblioteca, ya; si no, solo los cambios de Drive, y en el coche cuando ya está sonando
+    if(!LIB.idx||pend)SYNC.run(pend);else if(Date.now()-SYNC.last>10*60e3)setTimeout(()=>SYNC.quick(),document.body.classList.contains('carmode')?25000:1500);}
   DL.sync();if(S.stats)pushStats();renderAll();}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AUTH.ok()&&Date.now()-SY.lastPull>60e3){SY.pullAll().catch(()=>{});LIB.pull().catch(()=>{});}});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AUTH.ok()&&Date.now()-SY.lastPull>60e3){SY.lastPull=Date.now();AD.list().catch(()=>{}).then(()=>{SY.pullAll().catch(()=>{});LIB.pull().catch(()=>{});});
+  if(Date.now()-SYNC.last>30*60e3&&LIB.idx)setTimeout(()=>SYNC.quick(),5000);}});
 window.gisReady=()=>{AUTH.init();};
 
 /* ===================== arranque ===================== */
@@ -1789,21 +1954,43 @@ function firstRunSheet(){openSheet(h('h3',null,'¿Dónde estás abriendo Spotica
   h('div',{class:'steps'},...Object.entries(KIND).map(([k,o])=>h('button',{class:'pbtn'+(device.kind===k?' amber':''),style:'min-height:64px;font-size:17px',onclick:()=>{
     device.kind=k;device.name=o.name;LS.set('dev',device);closeLayer();
     if(k==='car'){prefs.carStart=true;savePrefs();carOn();}else if(document.body.classList.contains('carmode'))carOff();renderAll();}},ic(o.icon),o.name))));}
-(function(){const hs=location.hash;if(!/access_token=|error=/.test(hs))return;const p=new URLSearchParams(hs.slice(1));let ok=true;try{ok=p.get('state')===sessionStorage.getItem('lg.st');}catch{}
-  history.replaceState(null,'',location.pathname);if(p.get('access_token')&&ok)setTimeout(()=>AUTH.done({access_token:p.get('access_token'),expires_in:p.get('expires_in')}),0);
-  else if(p.get('error'))setTimeout(()=>toast('Google no ha dado acceso ('+p.get('error')+').',5000),500);})();
-async function boot(){try{document.documentElement.style.setProperty('--wood-img','url('+woodTexture()+')');}catch{}
+(function(){const hs=location.hash;if(!/(^|[#&])(access_token|error)=/.test(hs))return;const p=new URLSearchParams(hs.slice(1)),ret=window.GRET||{};let ok=true;
+  try{const o=JSON.parse(localStorage.getItem('lg.oauth')||'null');ok=!!p.get('state')&&(p.get('state')===sessionStorage.getItem('lg.st')||!!(o&&o.st===p.get('state')));
+    sessionStorage.removeItem('lg.ret');sessionStorage.removeItem('lg.st');localStorage.removeItem('lg.oauth');}catch{}
+  history.replaceState(null,'',location.pathname+(ret.s||'')+(ret.h&&!/access_token|error=/.test(ret.h)?ret.h:''));
+  if(p.get('access_token')&&ok){const e=Date.now()+((+p.get('expires_in')||3600)-120)*1000;AUTH.token=p.get('access_token');AUTH.exp=e;LS.set('authed',true);LS.set('tok',{t:AUTH.token,e});LS.set('silentFail',0);}
+  else if(p.get('error')||!ok){if(ret.silent)LS.set('silentFail',Date.now());else setTimeout(()=>toast('Google no ha dado acceso ('+(p.get('error')||'estado')+').',5000),500);}})();
+/* volver a lo que sonaba tras renovar el acceso entre dos canciones (sigue por la siguiente, sin tocar nada) */
+function resumeLocal(){let r=null;try{r=JSON.parse(sessionStorage.getItem('lg.resume')||'null');sessionStorage.removeItem('lg.resume');}catch{}
+  if(!r||Date.now()-(r.at||0)>10*60e3)return false;const want=(r.q||[])[r.qi],q=(r.q||[]).filter(id=>getTrack(id));if(!q.length)return false;
+  let qi=q.indexOf(want);if(qi<0)qi=Math.min(q.length-1,r.qi||0);
+  P.q=q;P.orig=null;P.src=r.src||'';P.shuffle=!!r.sh;P.repeat=r.rp||'off';
+  if(r.rs&&getTrack(r.rs)){P.radioSeed=getTrack(r.rs);P.radioHint=r.rh||null;prefs.radio=true;}
+  try{if(CAR&&r.car==='radio'&&P.radioSeed){CAR.applied='radio';CAR.prevMode='radio';CAR.radioLb=P.radioSeed.t||'';CAR.setState({mode:'radio'});}}catch{}
+  P.load(qi,{autoplay:true,pos:r.pos||0});return true;}
+/* el coche arranca solo: suena la emisora del dial (si Firefox deja sonar sin tocar; si no, al primer toque en cualquier sitio, que además pone la pantalla completa) */
+async function carAutostart(){if(!document.body.classList.contains('carmode')||P.current||S.ctrl)return;
+  if(await window.__silent)return; // se está renovando el acceso: vuelve en un segundo y arranca entonces
+  if(resumeLocal())return;let c=null;try{c=CAR;}catch{}if(!c)return;
+  const pol=AUTH.autoplay();c.tuneCurrent(); // si el navegador no deja sonar sin tocar, se queda preparada (y guardándose) para que el primer toque suene al momento
+  if(pol==='allowed')return;
+  setTimeout(()=>{if(!AE.el.paused||!document.body.classList.contains('carmode'))return;let n=0;const say=()=>{try{CAR.say('TOCA LA PANTALLA PARA EMPEZAR',7000);}catch{}};say();
+    const nag=setInterval(()=>{if(!AE.el.paused||++n>40||!document.body.classList.contains('carmode')){clearInterval(nag);return;}say();},15000);
+    document.addEventListener('pointerup',()=>{const lt1=P.lt;setTimeout(()=>{clearInterval(nag);if(!document.body.classList.contains('carmode')||P.lt!==lt1)return; // el toque ya ha puesto algo (una emisora…)
+        if(!P.current){try{CAR.tuneCurrent();}catch{}}else if(AE.el.paused)P.resume();},80);},{capture:true,once:true});},pol==='unknown'?2500:700);}
+async function boot(){const carFirst=FORCE==='car'||location.hash==='#coche';const wood=()=>{try{document.documentElement.style.setProperty('--wood-img','url('+woodTexture()+')');}catch{}};if(carFirst)setTimeout(wood,5000);else wood(); // en el coche no se ve: después
   $$('[data-knob]').forEach(bindKnob);
   if(!device){device={id:rid(8),kind:guessKind()};device.name=KIND[device.kind].name;LS.set('dev',device);S.firstRun=true;}
   const hv=location.hash.slice(1);if(VIEWS.includes(hv))S.view=hv;
   renderNav();renderView(true);renderPlayer(true);renderDials();renderPresets();requestAnimationFrame(specLoop);
   if(FORCE){if(S.firstRun){device.kind=FORCE;device.name=KIND[FORCE]?KIND[FORCE].name:device.name;LS.set('dev',device);}if(FORCE==='pc')setTimeout(pcOn,0);else if(FORCE==='car')carOn();}
   else if(hv==='pc'||hv==='ordenador'||(!hv&&LS.get('pcStart',0)&&!prefs.carStart))setTimeout(pcOn,0);else if(hv==='coche'||prefs.carStart||(S.firstRun&&device.kind==='car')||(!hv&&LS.get('lastMode','')==='car'&&matchMedia('(display-mode: fullscreen),(display-mode: standalone)').matches))carOn(); // instalada en la tablet: abre directa en el coche
-  await Promise.all([SY.loadLocal(),LIB.loadLocal()]);
+  await Promise.all([SY.loadLocal(),LIB.loadLocal(),AC.init()]);await loadRadioCache();
   try{const st=await IDB.get('kv','stats');if(st&&st.ym===ym()&&st.dev===device.id){S.stats=st;S.statsId=statsName();}}catch{}
-  DL.init();renderAll();if(AUTH.ok())onAuth();
+  await DL.init();renderAll();if(AUTH.ok())onAuth();carAutostart();
+  if(!LS.get('authed',false))loadGIS();else setTimeout(loadGIS,8000); // Google Identity solo hace falta para la ventana de entrar: que no compita con la primera canción
   if(S.firstRun&&!SIM&&!DEMO&&!FORCE)setTimeout(firstRunSheet,700);if(SIM)simInit();if(DEMO)demoLib();if(new URLSearchParams(location.search).has('medir'))medir();
-  if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});}
+  if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{STREAM.send();setTimeout(()=>r.update().catch(()=>{}),carFirst?30000:3000);}).catch(()=>{});}
 </script>
 <!--CAR2--><template id="carTpl"><style>
 body{margin:0}
@@ -1849,11 +2036,11 @@ button{-webkit-tap-highlight-color:transparent}
 /* dial de radio vertical */
 .dial{position:absolute;border-radius:16px;overflow:hidden;background:linear-gradient(#0d0a07,#060504);box-shadow:inset 0 0 0 2px #1b1c1f,inset 0 10px 24px rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.07)}
 .dial .glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(120% 60% at 50% 100%,rgba(255,158,40,.13),transparent 70%),linear-gradient(160deg,rgba(255,255,255,.07),transparent 35%)}
-.dial .hd{position:absolute;left:0;right:0;top:11px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:.26em;color:#9a6a3c}
+.dial .hd{position:absolute;left:0;right:0;top:10px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;letter-spacing:.26em;color:#a8743f}
 .dial .sc{position:absolute;left:0;right:0;top:44px;height:480px;}
 .dial .needle{position:absolute;left:6px;right:6px;height:3px;margin-top:-1.5px;border-radius:2px;background:#ff3d1a;box-shadow:0 0 10px #ff5d1a,0 0 22px rgba(255,93,26,.5)}
 .dial .needle.snap{transition:top .4s cubic-bezier(.3,1.4,.5,1)}
-.dial .ft{position:absolute;left:0;right:0;bottom:10px;text-align:center;font-family:'Doto',monospace;font-weight:900;font-size:14px;color:#ffc15c;text-shadow:0 0 6px rgba(255,158,40,.6)}
+.dial .ft{position:absolute;left:0;right:0;bottom:10px;text-align:center;white-space:nowrap;overflow:hidden;font-family:'Doto',monospace;font-weight:900;font-size:14px;color:#ffc15c;text-shadow:0 0 6px rgba(255,158,40,.6)}
 .dial .touch{position:absolute;inset:0;cursor:ns-resize;touch-action:none}
 
 /* teclas de grafito, a lo largo */
@@ -2041,7 +2228,7 @@ button{-webkit-tap-highlight-color:transparent}
 .dial .needle{left:4px;right:4px;background:linear-gradient(90deg,#c22a10,#ff6c2a 20%,#ff894a 50%,#ff6c2a 80%,#c22a10);box-shadow:0 0 4px #ff5d1a,0 0 10px #ff5d1a,0 0 22px rgba(255,93,26,.55),0 0 40px rgba(255,60,20,.25);opacity:var(--b3,1)}
 .dial .spill{position:absolute;left:-12px;right:-12px;height:76px;margin-top:-38px;pointer-events:none;background:radial-gradient(50% 50% at 50% 50%,rgba(255,99,30,.2),transparent 70%);opacity:var(--b3,1)}
 .dial .spill.snap{transition:top .4s cubic-bezier(.3,1.4,.5,1)}
-.dial .spine{position:absolute;left:58px;top:0;bottom:0;width:1px;background:#8a5414}
+.dial .spine{position:absolute;left:52px;top:0;bottom:0;width:1px;background:#8a5414}
 .dial .back{position:absolute;inset:0;pointer-events:none;background:radial-gradient(90% 55% at 40% 55%,rgba(255,158,40,.08),transparent 70%);}
 
 .dial .sc>.needle,.dial .sc>.spill{opacity:var(--b3,1)}
@@ -2085,9 +2272,9 @@ button{font-family:inherit;-webkit-tap-highlight-color:transparent;outline:none}
 .dial .needle.snap,.dial .spill.snap{transition:transform .3s cubic-bezier(.3,1.2,.5,1)}
 .dial .ft,.comet,.big,.rem,.hrow,canvas.leds{will-change:transform}
 </style><script type="text/x-tpl"><div style="width: 1024px; height: 600px; position: relative; overflow: hidden; background-color: #0e0f11; background-image: radial-gradient(rgba(255,255,255,.028) .8px, transparent 1.1px), linear-gradient(#131416, #0a0b0c); background-size: 3px 3px, 100% 100%; font-family: 'Barlow Condensed', sans-serif; color: #dcdad3">
-<div class="hous" style="left: 18px; right: 184px; top: 12px; height: 322px"></div>
+<div class="hous" style="left: 202px; right: 10px; top: 12px; height: 322px"></div>
 
-<div class="lcd" style="left: 30px; top: 24px; width: 800px; height: 298px">
+<div class="lcd" style="left: 208px; top: 24px; width: 800px; height: 298px">
 <div class="win" style="width: {{winW}}px; height: 264px"><div class="stg"><div class="grid"></div><canvas class="leds" width="{{cvW}}" height="{{cvH}}"></canvas><div class="scanw" style="{{scanSt}}"><div key="{{scanK}}" class="scan" style="{{scanP}}"></div></div></div><div key="{{hdK}}" class="{{hdCls}}"></div><div class="hwrap"><div key="{{hK}}" class="{{hCls}}"><div class="dots" style="{{heartSt}}"></div></div><div key="{{bK}}" class="{{bCls}}"><div class="hh hl"><div class="dots" style="{{brkL}}"></div></div><div class="hh hr"><div class="dots" style="{{brkR}}"></div></div></div></div><div class="swipe" onPointerDown="{{swDown}}" onPointerUp="{{swUp}}" onPointerCancel="{{swCancel}}" role="button" tabindex="-1" aria-label="Desliza para cambiar de canción"></div></div>
 <div class="dv"></div>
 <div class="{{infoCls}}" onPointerUp="{{infoTap}}">
@@ -2107,7 +2294,7 @@ button{font-family:inherit;-webkit-tap-highlight-color:transparent;outline:none}
 <div class="lcdglow"></div>
 </div>
 
-<div class="dial" style="left: 850px; top: 12px; width: 156px; height: 576px">
+<div class="dial" style="left: 10px; top: 12px; width: 182px; height: 576px">
 <div class="back"></div>
 <div class="hd">EMISORAS</div>
 <div class="sc">
@@ -2123,7 +2310,7 @@ button{font-family:inherit;-webkit-tap-highlight-color:transparent;outline:none}
 <div class="touch" onPointerDown="{{dDown}}" onPointerMove="{{dMove}}" onPointerUp="{{dUp}}" onPointerCancel="{{dUp}}" onPointerLeave="{{dUp}}" role="slider" aria-label="Elegir emisora" aria-valuemin="20" aria-valuemax="60" aria-valuenow="{{freqR}}" tabindex="0"></div>
 </div>
 
-<div class="chan" style="left: 18px; right: 184px; top: 346px; height: 242px"><div class="trim"></div>
+<div class="chan" style="left: 202px; right: 10px; top: 346px; height: 242px"><div class="trim"></div>
 <div class="krow">
 <button class="{{antCls}}" onPointerDown="{{lrDownL}}" onPointerUp="{{lrUp}}" onPointerCancel="{{lrUp}}" onPointerLeave="{{lrUp}}" aria-label="Anterior (mantén para retroceder)"><span class="lgb"><svg class="ico big" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"></path></svg></span><span class="lgl"><span class="lgf"><i class="mi big m-ant"></i></span></span></button>
 <button class="{{pp.cls}}" onClick="{{pp.fn}}" aria-label="Play o pausa"><span class="kspill"></span><span class="lgb"><svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="{{pp.d}}"></path></svg><span class="lb">{{pp.lb}}</span></span><span class="lgl"><span class="lgf"><i class="{{pp.mi}}"></i><span class="lb lt">{{pp.lb}}</span></span></span><span class="lamp"></span></button>
@@ -2586,10 +2773,10 @@ class Component extends DCLogic {
     const flaps = flip ? Array.from({ length: 8 }, (_, c) => ({ k: 'f' + c + '-' + fk, st: 'left: ' + c * 100 + 'px', d: 'animation-delay: ' + tS(c) + 'ms' })) : [];
     const md = st.mode, now = new Date();
     const yOf = f => (f - 20) / 40 * 480;
-    const ticks = Array.from({ length: 41 }, (_, k) => { const f = 20 + k, major = f % 5 === 0; return 'position: absolute; top: ' + yOf(f).toFixed(1) + 'px; height: 2px; margin-top: -1px; left: ' + (major ? 42 : 50) + 'px; width: ' + (major ? 16 : 8) + 'px; background: ' + (major ? '#ffc15c' : '#c4641a'); });
-    const nums = [20, 30, 40, 50, 60].map(v => ({ v, style: 'position: absolute; left: 2px; width: 34px; text-align: right; top: ' + (yOf(v) - 10).toFixed(1) + 'px; font-family: Doto, monospace; font-weight: 900; font-size: 17px; color: #ffc15c; text-shadow: 0 0 6px rgba(255,158,40,.6)' }));
+    const ticks = Array.from({ length: 41 }, (_, k) => { const f = 20 + k, major = f % 5 === 0; return 'position: absolute; top: ' + yOf(f).toFixed(1) + 'px; height: 2px; margin-top: -1px; left: ' + (major ? 36 : 44) + 'px; width: ' + (major ? 16 : 8) + 'px; background: ' + (major ? '#ffc15c' : '#c4641a'); });
+    const nums = [20, 30, 40, 50, 60].map(v => ({ v, style: 'position: absolute; left: 2px; width: 30px; text-align: right; top: ' + (yOf(v) - 11).toFixed(1) + 'px; font-family: Doto, monospace; font-weight: 900; font-size: 19px; color: #ffc15c; text-shadow: 0 0 6px rgba(255,158,40,.6)' }));
     const nr = this.near(st.freq), tuned = !st.drag || nr.noise === 0;
-    const stations = S.map((x, k) => { const on = k === st.stn && !st.drag || (st.drag && k === nr.k && nr.noise === 0); return { n: x.n, dot: 'position: absolute; left: 62px; top: ' + (yOf(x.f) - 4).toFixed(1) + 'px; width: 8px; height: 8px; border-radius: 50%; background: ' + (on ? '#ffcc6a; box-shadow: 0 0 8px #ff9d1f' : '#6a3a0e'), lab: 'position: absolute; left: 72px; right: 0; top: ' + (yOf(x.f) - 10).toFixed(1) + 'px; font-family: Doto, monospace; font-weight: 900; font-size: 15px; letter-spacing: -.7px; white-space: nowrap; color: ' + (on ? '#ffe7a8; text-shadow: 0 0 8px rgba(255,168,40,.95), 0 0 2px #fff6dc' : '#ffaa3c; text-shadow: 0 0 4px rgba(255,158,40,.45)') + '; opacity: 1' }; });
+    const stations = S.map((x, k) => { const on = k === st.stn && !st.drag || (st.drag && k === nr.k && nr.noise === 0); return { n: x.n, dot: 'position: absolute; left: 56px; top: ' + (yOf(x.f) - 4).toFixed(1) + 'px; width: 8px; height: 8px; border-radius: 50%; background: ' + (on ? '#ffcc6a; box-shadow: 0 0 8px #ff9d1f' : '#6a3a0e'), lab: 'position: absolute; left: 68px; right: 0; top: ' + (yOf(x.f) - 13).toFixed(1) + 'px; font-family: Doto, monospace; font-weight: 900; font-size: 20px; letter-spacing: -1px; white-space: nowrap; color: ' + (on ? '#ffe7a8; text-shadow: 0 0 8px rgba(255,168,40,.95), 0 0 2px #fff6dc' : '#ffaa3c; text-shadow: 0 0 4px rgba(255,158,40,.45)') + '; opacity: 1' }; });
     const pgs = (txt, max) => { txt = String(txt || ''); if (txt.length <= max) return [txt]; const out = []; let cur = ''; for (const w of txt.split(/\s+/)) { if (cur && (cur + ' ' + w).length > max) { out.push(cur); cur = w; } else cur = cur ? cur + ' ' + w : w; while (cur.length > max) { out.push(cur.slice(0, max)); cur = cur.slice(max); } } if (cur) out.push(cur); return out; };
     const pgI = Math.floor(Date.now() / 3200), pick = L => L[pgI % L.length];
     const ttlTxt = st.drag && nr.noise > 0 ? 'Sintonizando' : pick(pgs(s.t, exp ? 12 : 16)), ttlMove = false;
@@ -4136,7 +4323,7 @@ async function tagArtists(){if(TAGS.busy||!(S.cfg.apiKey||'').trim()||!navigator
       LS.set('artTags',ART);}
     if(done){radioCache={sig:'',m:{}};try{CAR&&CAR.say('EMISORAS AFINADAS · '+done+' ARTISTAS');}catch{}}}
   catch(e){console.warn('etiquetas',e);}finally{TAGS.busy=false;}}
-function radioKind(t,k){const a=norm(t.a||''),g=norm(t.g||'');if(k==='fito')return RADIO_RE.fito.test(a)||RADIO_RE.fito.test(norm(t.aa||''));
+function radioKind(t,k){const a=t._na!=null?t._na:(t._na=norm(t.a||'')),g=t._ng!=null?t._ng:(t._ng=norm(t.g||''));if(k==='fito')return RADIO_RE.fito.test(a)||RADIO_RE.fito.test(norm(t.aa||''));
   if(k==='divas'){ // pop cantado por mujeres: la primera que firma tiene que ser ella y nada de colaboraciones con reguetoneros ni chicos que manden
     const [pa,...co]=artistsOf(t);if(!(RADIO_RE.divas.test(pa)||/carita triste/.test(norm(t.t||''))))return false;if(RADIO_RE.divasNo.test(pa))return false;
     if(/reggaet|regueton|dembow|\btrap\b|urbano latino/.test(g))return false;
@@ -4154,14 +4341,18 @@ function radioKind(t,k){const a=norm(t.a||''),g=norm(t.g||'');if(k==='fito')retu
   if(k==='trap')return /\btrap\b|hip.?hop|\brap\b/.test(g)&&!/latin|espa|urbano|reggaet/.test(g)&&!RADIO_RE.regg.test(a);
   if(k==='hit')return /\bpop\b|dance|edm|electro.?pop/.test(g)&&!/rock|metal|punk/.test(g);return false;}
 let radioCache={sig:'',m:{}};
-function radioIds(k){const sig=S.tracks.size+':'+S.allIds.length+':'+DIA_KEY()+':'+FBV+':'+Object.keys(S.likes).length;if(radioCache.sig!==sig)radioCache={sig,m:{}};if(radioCache.m[k])return radioCache.m[k];
+const radioSig=()=>S.tracks.size+':'+S.allIds.length+':'+DIA_KEY()+':'+FBV+':'+Object.keys(S.likes).length+':'+((S.cfg.rules&&JSON.stringify(S.cfg.rules).length)||0);
+/* las emisoras ya calculadas se guardan en el aparato: al encender, la del dial está lista al momento (calcularla con 11.000 canciones lleva su rato en la tablet) */
+const saveRadioCache=debounce(()=>{try{IDB.put('kv','radioCache',radioCache).catch(()=>{});}catch{}},4000);
+async function loadRadioCache(){try{const rc=await IDB.get('kv','radioCache');if(rc&&rc.m&&rc.sig===radioSig()&&radioCache.sig!==rc.sig)radioCache=rc;}catch{}}
+function radioIds(k){const sig=radioSig();if(radioCache.sig!==sig)radioCache={sig,m:{}};if(radioCache.m[k])return radioCache.m[k];
   const FB=fbOf('rad:'+k),LR=learned('rad:'+k);let ids=S.allIds.filter(id=>{const t=S.tracks.get(id);if(!t||FB.down.has(id))return false;if(FB.up.has(id))return true;return(radioKind(t,k)||LR.inA.has(featOf(t).pa))&&passLearned(t,LR);});
   if(k==='rockes')ids=capArtists(ids,[[/\bmarea\b|\bkutxi\b/,1e9],[/platero/,4],[/extremoduro|\brobe\b/,30]],15); // que mande Marea y Platero apenas salga
   if(k==='hit'){ // radiofórmula: lo de los últimos años manda; nada de antes de 2008 salvo lo que te guste; pocos artistas españoles
     ids=ids.filter(id=>{const t=S.tracks.get(id),y=parseInt(t.y,10);return !(y>1900&&y<2008)||S.likes[id];});
     ids=capArtists(ids,[[RADIO_RE.hitEs,5]],14);}
   if(k==='divas'||k==='popes'||k==='regg'||k==='trap')ids=capArtists(ids,[],k==='popes'?18:24);
-  return radioCache.m[k]=ids;}
+  radioCache.m[k]=ids;saveRadioCache();return ids;}
 function carKind(t){if(!t)return null;const a=norm(t.a||''),g=norm(t.g||'');
   if(KIND_RE.fito.test(a))return 'fito';if(KIND_RE.diva.test(a))return 'diva';if(RADIO_RE.trap.test(a))return 'trap';
   for(const k of ['pijo','barrio','regg','rock'])if(KIND_RE[k].test(a))return k;
@@ -4356,8 +4547,17 @@ class CarUI extends Component{
     super.closeScr(label);}
 }
 let CAR=null;
-function carFit(){const st=window.$car2stage;if(!st)return;const hs=document.getElementById('car2'),r=hs?hs.getBoundingClientRect():null,w=(r&&r.width)||innerWidth,hh=(r&&r.height)||innerHeight,k=Math.min(w/1024,hh/600);st.style.transform='scale('+k.toFixed(4)+')';}
-addEventListener('resize',carFit);addEventListener('orientationchange',()=>setTimeout(carFit,300));if(window.visualViewport)visualViewport.addEventListener('resize',carFit);
+/* La pantalla del coche (1024×600) se encaja en lo que de verdad se ve: si el navegador enseña su barra de direcciones
+   (o la quita), se recoloca sola. Se mide con visualViewport, que descuenta esa barra, y se repasa cada poco por si acaso */
+function carFit(){const st=window.$car2stage;if(!st)return;const hs=document.getElementById('car2');if(!hs)return;const r=hs.getBoundingClientRect();if(!r.width||!r.height)return;
+  let L=r.left,T=r.top,R=r.right,B=r.bottom;const vv=window.visualViewport;
+  if(vv&&vv.scale<1.05&&vv.width>100&&vv.height>100){L=Math.max(L,vv.offsetLeft);T=Math.max(T,vv.offsetTop);R=Math.min(R,vv.offsetLeft+vv.width);B=Math.min(B,vv.offsetTop+vv.height);}
+  if(innerWidth>100)R=Math.min(R,innerWidth);if(innerHeight>100)B=Math.min(B,innerHeight);
+  const w=Math.max(200,R-L),hh=Math.max(150,B-T),k=Math.min(w/1024,hh/600),x=Math.round((L+R)/2-r.left),y=Math.round((T+B)/2-r.top),sig=x+','+y+','+k.toFixed(4);
+  if(sig===st.__sig)return;st.__sig=sig;st.style.left=x+'px';st.style.top=y+'px';st.style.transform='scale('+k.toFixed(4)+')';}
+addEventListener('resize',carFit);addEventListener('orientationchange',()=>setTimeout(carFit,300));document.addEventListener('fullscreenchange',()=>{carFit();setTimeout(carFit,400);});
+if(window.visualViewport){visualViewport.addEventListener('resize',carFit);visualViewport.addEventListener('scroll',carFit);}
+setInterval(()=>{if(window.$car2stage&&document.body.classList.contains('carmode'))carFit();},1500);
 const CVW=480*Math.min(2,Math.max(1,Math.round(devicePixelRatio||1)));
 function carRemount(){if(!document.body.classList.contains('carmode'))return;try{if(CAR)CAR.unmount();}catch{}CAR=null;$('#car').textContent='';renderCar();}
 function renderCar(){const c=$('#car');if(CAR&&c.firstChild)return;c.textContent='';
@@ -4893,6 +5093,6 @@ document.addEventListener('keydown',e=>{if(!PC.on)return;if(/INPUT|TEXTAREA|SELE
 </script>
 
 <script>try{boot();}catch(e){console.error('boot',e);}</script>
-<script src="https://accounts.google.com/gsi/client" async onload="gisReady()"></script>
+
 </body>
 </html>
