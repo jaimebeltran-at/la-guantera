@@ -2,6 +2,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<script>/* marco invisible de renovación: Google vuelve aquí con el acceso; se le pasa a la app de fuera y esta página no arranca nada */
+if(window.top!==window&&/(^|[#&])(access_token|error)=/.test(location.hash)){try{parent.postMessage({t:'gtok',h:location.hash},location.origin);}catch(e){}try{window.stop();}catch(e){}document.write('<plaintext style="display:none">');}</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111214">
 <script>/* tres apps separadas: ?m=coche, ?m=ordenador o ?m=movil (o coche.html, ordenador.html, movil.html). Cada una abre siempre en su modo. */
@@ -11,10 +13,10 @@ window.GRET=(function(){try{if(/(^|[#&])(access_token|error)=/.test(location.has
 window.FORCE=({coche:'car',ordenador:'pc',pc:'pc',movil:'phone'})[new URLSearchParams(GRET?GRET.s||'':location.search).get('m')]||null;
 document.write('<link rel="manifest" href="'+(FORCE==='car'||(!FORCE&&(GRET?GRET.h:location.hash)==='#coche')?'manifest-coche.webmanifest':FORCE==='pc'?'manifest-ordenador.webmanifest':FORCE==='phone'?'manifest-movil.webmanifest':'manifest.webmanifest')+'">');
 /* entrar en Google sin ventanas: se va a Google y vuelve a esta misma carpeta (la dirección registrada) con el acceso detrás del #, que nunca llega a GitHub */
-window.gAuthURL=function(prompt,extra){var st=Math.random().toString(36).slice(2)+Date.now().toString(36);
+window.gAuthURL=function(prompt,extra,frame){var st=Math.random().toString(36).slice(2)+Date.now().toString(36);gAuthURL.last=st;
   var ret=Object.assign({s:location.search,h:location.hash,silent:prompt==='none',at:Date.now()},extra||{});
-  try{sessionStorage.setItem('lg.st',st);sessionStorage.setItem('lg.ret',JSON.stringify(ret));}catch(e){}
-  try{localStorage.setItem('lg.oauth',JSON.stringify({st:st,ret:ret,at:Date.now()}));}catch(e){} // por si el navegador vuelve en otra pestaña (sin la memoria de esta)
+  if(!frame){try{sessionStorage.setItem('lg.st',st);sessionStorage.setItem('lg.ret',JSON.stringify(ret));}catch(e){}
+  try{localStorage.setItem('lg.oauth',JSON.stringify({st:st,ret:ret,at:Date.now()}));}catch(e){}} // por si el navegador vuelve en otra pestaña (sin la memoria de esta)
   var em=null;try{em=JSON.parse(localStorage.getItem('lg.email')||'null');}catch(e){}
   var p=new URLSearchParams({client_id:GCFG.clientId,redirect_uri:location.origin+location.pathname.replace(/[^\/]*$/,''),response_type:'token',scope:GCFG.scope,include_granted_scopes:'true',state:st,hd:GCFG.hd});
   if(prompt)p.set('prompt',prompt);if(em)p.set('login_hint',em);return 'https://accounts.google.com/o/oauth2/v2/auth?'+p;};
@@ -29,6 +31,8 @@ window.gReach=function(ms){return new Promise(function(res){var done=false,t=set
 /* al abrir: si el acceso caducó (o le queda poco), se pide otro antes de nada. Mientras se comprueba, el coche espera para no empezar a sonar y cortarse */
 window.__silent=(function(){try{if(GRET||/(^|[#&])(access_token|error)=/.test(location.hash))return Promise.resolve(false);var t=null;try{t=JSON.parse(localStorage.getItem('lg.tok')||'null');}catch(e){}
   if(t&&t.e-Date.now()>15*60e3)return Promise.resolve(false);if(!gSilentOK())return Promise.resolve(false);
+  var g=function(k){try{return +JSON.parse(localStorage.getItem('lg.'+k)||'0')||0;}catch(e){return 0;}},iok=g('ifrOK'),ifl=g('ifrFail');
+  if(iok>=ifl||Date.now()-ifl>12*3600e3){window.__ifrFirst=true;return Promise.resolve(false);} // el marco invisible no quita la pantalla: se prueba primero, ya con la app en marcha
   return gReach(2500).then(function(ok){if(!ok||!gSilentOK())return false;try{localStorage.setItem('lg.silentAt',JSON.stringify(Date.now()));}catch(e){}location.replace(gAuthURL('none'));return true;});}catch(e){return Promise.resolve(false);}})();
 </script>
 <link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="alternate icon" href="icon-192.png">
@@ -443,6 +447,8 @@ function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f
 async function until(fn,ms){const end=Date.now()+ms;while(!fn()&&Date.now()<end)await sleep(120);return fn();}
 const coll=new Intl.Collator('es',{sensitivity:'base',numeric:true});
 const ym=(d=new Date())=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+/* una promesa con plazo: si no llega a tiempo, falla (en vez de dejarlo todo esperando) */
+const withTO=(p,ms)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(Object.assign(new Error('timeout'),{code:'timeout'})),ms))]);
 function shuffleArr(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function toast(msg,ms=2800){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms);}
 const LS={get(k,d){try{const v=localStorage.getItem('lg.'+k);return v==null?d:JSON.parse(v);}catch{return d;}},set(k,v){try{localStorage.setItem('lg.'+k,JSON.stringify(v));}catch{}}};
@@ -496,6 +502,10 @@ const getTrack=id=>S.tracks.get(id)||TEST.get(id)||null;
 /* ===================== acceso a Google ===================== */
 const CFG=window.GCFG;
 const G='https://www.googleapis.com/drive/v3',GU='https://www.googleapis.com/upload/drive/v3';
+/* registro del coche: lo que pasa por dentro (acceso a Google, atascos, errores…), para poder ver qué falló. Se copia desde Ajustes */
+const CLOG=(()=>{try{const a=JSON.parse(localStorage.getItem('lg.clog')||'[]');return Array.isArray(a)?a:[];}catch{return[];}})();
+function clog(m){try{const d=new Date();CLOG.push(String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+' '+d.toTimeString().slice(0,8)+' '+m);if(CLOG.length>300)CLOG.splice(0,CLOG.length-300);
+  clearTimeout(clog.t);clog.t=setTimeout(()=>{try{localStorage.setItem('lg.clog',JSON.stringify(CLOG));}catch{}},1500);}catch{}}
 const AUTH={token:null,exp:0,client:null,waiters:[],busy:false,lastAsk:0,
   ok(){if(!this.token){const s=LS.get('tok',null);if(s&&s.e>Date.now()){this.token=s.t;this.exp=s.e;}}return!!this.token&&Date.now()<this.exp;},
   soon(){return!this.token||this.exp-Date.now()<20*60e3;},
@@ -505,14 +515,14 @@ const AUTH={token:null,exp:0,client:null,waiters:[],busy:false,lastAsk:0,
   done(r){this.busy=false;if(!r||r.error){this.fail((r&&r.error)||'error');return;}
     this.token=r.access_token;this.exp=Date.now()+((+r.expires_in||3600)-120)*1000;LS.set('authed',true);LS.set('tok',{t:this.token,e:this.exp});LS.set('silentFail',0);
     this.waiters.splice(0).forEach(w=>w.res(this.token));try{STREAM.send();}catch{}onAuth();},
-  fail(c){this.busy=false;if(/popup/.test(String(c))&&!this.ok())openSheet(h('h3',null,'¿No se ha abierto Google?'),h('p',{class:'sub',style:'margin:0'},'Este navegador no ha dejado abrir la ventana de Google. Puedes entrar en esta misma pantalla.'),
+  fail(c){this.busy=false;clog('ventana de Google: '+c);if(/popup/.test(String(c))&&!this.ok()&&!document.body.classList.contains('carmode'))openSheet(h('h3',null,'¿No se ha abierto Google?'),h('p',{class:'sub',style:'margin:0'},'Este navegador no ha dejado abrir la ventana de Google. Puedes entrar en esta misma pantalla.'),
       h('div',{class:'row',style:'justify-content:flex-end'},h('button',{class:'pbtn ghost',onclick:closeLayer},'Cancelar'),h('button',{class:'pbtn amber',onclick:()=>AUTH.redirect()},'Entrar en esta ventana')));
     this.waiters.splice(0).forEach(w=>w.rej(Object.assign(new Error(c),{code:'auth'})));renderSoon();},
   /* solo dentro de un toque o clic: Google abre una ventana un instante */
   request(){this.lastAsk=Date.now();if(!this.init()){if(window.__gisErr)toast('No se pudo cargar el acceso de Google. Revisa la conexión.');loadGIS();return false;}
     if(this.busy)return true;this.busy=true;try{this.client.requestAccessToken({prompt:LS.get('authed',false)?'':'consent'});}catch{this.busy=false;return false;}return true;},
   get(wait){if(this.ok())return Promise.resolve(this.token);if(!wait)return Promise.reject(Object.assign(new Error('no_token'),{code:'no_token'}));
-    if(!this.busy){if(document.body.classList.contains('carmode')&&typeof CAR!=='undefined'&&CAR)CAR.say('TOCA PARA CONECTAR CON GOOGLE',4000);else toast('Toca la pantalla para reconectar con Google',4000);}
+    if(!this.busy){if(document.body.classList.contains('carmode')){this.refresh();try{CAR.say('CONECTANDO CON GOOGLE…',4000);}catch{}}else toast('Toca la pantalla para reconectar con Google',4000);}
     return new Promise((res,rej)=>{const w={res,rej};this.waiters.push(w);setTimeout(()=>{const i=this.waiters.indexOf(w);if(i>=0){this.waiters.splice(i,1);rej(Object.assign(new Error('timeout'),{code:'no_token'}));}},120000);});},
   redirect(){try{saveStateNow();}catch{}location.href=gAuthURL('');},
   /* ¿el navegador deja sonar sin tocar? (Firefox lo dice; los demás, no se sabe) */
@@ -520,23 +530,52 @@ const AUTH={token:null,exp:0,client:null,waiters:[],busy:false,lastAsk:0,
   /* renovar sin ventanas: se va a Google y vuelve en un segundo; si estaba sonando, sigue por la canción siguiente */
   async silentNow(resume){if(!gSilentOK())return false;if(!await gReach(2000)||!gSilentOK())return false;
     try{if(resume)sessionStorage.setItem('lg.resume',JSON.stringify(Object.assign({at:Date.now()},resume)));}catch{}
-    try{saveStateNow();}catch{}LS.set('silentAt',Date.now());location.replace(gAuthURL('none'));return true;},
+    clog('acceso: vuelta a Google'+(resume?' (y sigue donde iba)':''));try{saveStateNow();}catch{}LS.set('silentAt',Date.now());location.replace(gAuthURL('none'));return true;},
+  /* renovar sin que se note: un marco invisible le pide a Google otro acceso (prompt=none) y se cierra solo; la música y la pantalla no se tocan */
+  iframeOK(){const ok=LS.get('ifrOK',0),f=LS.get('ifrFail',0);return ok>=f||Date.now()-f>12*3600e3;},
+  iframe(ms=6500){if(this._ifr)return this._ifr;if(!LS.get('authed',false)||!document.body)return Promise.resolve(false);
+    return this._ifr=new Promise(res=>{const u=gAuthURL('none',null,true),st=gAuthURL.last,f=document.createElement('iframe');let done=false,iv=0,tt=0;
+      const fin=(ok,why)=>{if(done)return;done=true;clearTimeout(tt);clearInterval(iv);removeEventListener('message',onm);setTimeout(()=>{try{f.remove();}catch{}},50);this._ifr=null;
+        LS.set(ok?'ifrOK':'ifrFail',Date.now());clog('acceso por marco invisible: '+(ok?'renovado':'no ('+(why||'sin respuesta')+')'));res(ok);};
+      const take=h=>{const p=new URLSearchParams(String(h||'').replace(/^#/,''));if(p.get('state')!==st)return;if(p.get('access_token')){this.apply(p.get('access_token'),+p.get('expires_in')||3600);fin(true);}else fin(false,p.get('error'));};
+      const onm=e=>{if(e.origin===location.origin&&e.data&&e.data.t==='gtok')take(e.data.h);};addEventListener('message',onm);
+      iv=setInterval(()=>{try{const h=f.contentWindow&&f.contentWindow.location.hash;if(h&&/access_token=|error=/.test(h))take(h);}catch{}},300);tt=setTimeout(()=>fin(false,'tiempo'),ms);
+      f.setAttribute('aria-hidden','true');f.tabIndex=-1;f.style.cssText='position:fixed;left:-30px;top:-30px;width:2px;height:2px;border:0;opacity:0;pointer-events:none';f.src=u;document.body.append(f);});},
+  apply(tok,secs){const e=Date.now()+((secs||3600)-120)*1000;this.token=tok;this.exp=e;LS.set('authed',true);LS.set('tok',{t:tok,e});LS.set('silentFail',0);
+    this.waiters.splice(0).forEach(w=>w.res(tok));try{STREAM.send();}catch{}setTimeout(()=>{try{onAuth();}catch{}},0);},
+  /* renovación sin ventanas, de una en una: primero el marco invisible; si este navegador no lo deja, la vuelta completa a Google
+     solo cuando no suena nada (en el coche, o al abrir); y si está sonando, entre dos canciones (si el navegador deja sonar solo) */
+  refresh(o={}){if(this._rf)return this._rf;return this._rf=(async()=>{try{if(!LS.get('authed',false)||window.top!==window||/[?&](sim|demo|medir)\b/.test(location.search))return false;
+      if(this.ok()&&this.exp-Date.now()>(o.min||10*60e3))return true;this.lastTry=Date.now();
+      if(!navigator.onLine||!await gReach(3000)){clog('acceso: sin conexión con Google');return false;}
+      if((o.force||this.iframeOK())&&await this.iframe())return true;
+      const car=document.body.classList.contains('carmode'),idle=!P.current||(AE.el.paused&&!S.loading);
+      if((car||o.boot)&&idle&&gSilentOK())return await this.silentNow(P.current?Object.assign(resumeSnap(P.qi),{play:false,pos:AE.el.currentTime||0}):null);
+      return false;}finally{this._rf=null;}})();},
   /* entre dos canciones, en el coche: si al acceso le quedan menos de 4 minutos, se renueva ahí mismo (un par de segundos de silencio) en vez de cortar después */
   needBoundary(){return!S.ctrl&&document.body.classList.contains('carmode')&&LS.get('authed',false)&&navigator.onLine&&(!this.token||this.exp-Date.now()<4*60e3)&&this.autoplay()==='allowed'&&gSilentOK();},
-  async boundary(ni){if(!this.needBoundary())return false;const a=Math.max(0,ni-30);
-    return this.silentNow({q:P.q.slice(a,ni+300),qi:ni-a,src:P.src||'',sh:!!P.shuffle,rp:P.repeat,rs:P.radioSeed&&P.radioSeed.id||null,rh:P.radioHint||null,pos:0,car:typeof CAR!=='undefined'&&CAR?CAR.applied:null});},
+  async boundary(ni){if(!this.needBoundary())return false;if(this.iframeOK()&&await this.iframe())return false; // si el marco invisible vale, ni se para la música
+    return this.silentNow(resumeSnap(ni));},
   signOut(){try{if(this.token&&window.google)google.accounts.oauth2.revoke(this.token,()=>{});}catch{}this.token=null;this.exp=0;LS.set('authed',false);LS.set('tok',null);try{STREAM.send();}catch{}renderAll();}};
-/* cualquier toque renueva el acceso si caduca pronto (la ventana de Google se abre y se cierra sola) */
-document.addEventListener('click',()=>{if(!LS.get('authed',false)||!navigator.onLine||AUTH.busy||Date.now()-AUTH.lastAsk<90e3)return;
-  if(document.body.classList.contains('carmode')){const left=AUTH.token?AUTH.exp-Date.now():0;if(left>5*60e3)return; // en el coche no se molesta mientras quede acceso
-    if(AUTH.autoplay()==='allowed'&&gSilentOK()){if(!P.current){AUTH.lastAsk=Date.now();AUTH.silentNow(null);}return;}} // sin ventanas: al abrir o entre dos canciones
-  else if(!AUTH.soon())return;
+/* lo que sonaba, para seguir igual tras volver de Google */
+function resumeSnap(ni){const a=Math.max(0,ni-30);return{q:P.q.slice(a,ni+300),qi:ni-a,src:P.src||'',sh:!!P.shuffle,rp:P.repeat,rs:P.radioSeed&&P.radioSeed.id||null,rh:P.radioHint||null,pos:0,car:typeof CAR!=='undefined'&&CAR?CAR.applied:null};}
+/* el acceso se renueva solo, sin ventanas: cada poco se mira si caduca pronto (y al volver la cobertura) */
+setInterval(()=>{if(!LS.get('authed',false)||S.ctrl)return;const left=AUTH.ok()?AUTH.exp-Date.now():0;if(left>10*60e3)return;
+  if(Date.now()-(AUTH.lastTry||0)<(left>0?120e3:45e3))return;AUTH.refresh();},15000);
+addEventListener('online',()=>{clog('vuelve la conexión');AUTH.lastTry=0;setTimeout(()=>AUTH.refresh(),1500);});
+addEventListener('offline',()=>clog('sin conexión'));
+/* un toque también lo intenta; en el coche NUNCA se abre la ventana de Google (ni se pide «Permitir»): todo por detrás */
+document.addEventListener('click',()=>{if(!LS.get('authed',false)||!navigator.onLine||AUTH.busy)return;
+  if(document.body.classList.contains('carmode')){const left=AUTH.ok()?AUTH.exp-Date.now():0;if(left<10*60e3&&Date.now()-(AUTH.lastTry||0)>20e3)AUTH.refresh();return;}
+  if(Date.now()-AUTH.lastAsk<90e3||!AUTH.soon())return;
+  if(AUTH.iframeOK()&&Date.now()-(AUTH.lastTry||0)>60e3){AUTH.refresh();return;} // primero sin ventana
   AUTH.request();},true);
 function loadGIS(){if(window.__gis||window.google&&google.accounts)return;window.__gis=1;const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;s.onload=()=>{try{gisReady();}catch{}};s.onerror=()=>{window.__gis=0;window.__gisErr=1;};document.head.append(s);}
 
-async function gfetch(url,opt={},wait=false){const tok=await AUTH.get(wait);const o=Object.assign({},opt,{headers:Object.assign({},opt.headers,{Authorization:'Bearer '+tok})});delete o.ms;
+async function gfetch(url,opt={},wait=false){const tok=await AUTH.get(wait);const o=Object.assign({},opt,{headers:Object.assign({},opt.headers,{Authorization:'Bearer '+tok})});delete o.ms;delete o.hms;let ht=0;
   if(opt.ms&&window.AbortController&&!o.signal){const ab=new AbortController();o.signal=ab.signal;setTimeout(()=>ab.abort(),opt.ms);} // con poca cobertura, mejor rendirse y reintentar que quedarse colgado
-  let r;try{r=await fetch(url,o);}catch(e){const to=e&&e.name==='AbortError';throw Object.assign(new Error(to?'timeout':'net'),{code:to?'timeout':'net'});}
+  else if(opt.hms&&window.AbortController&&!o.signal){const ab=new AbortController();o.signal=ab.signal;ht=setTimeout(()=>ab.abort(),opt.hms);} // solo hasta que empieza a llegar
+  let r;try{r=await fetch(url,o);}catch(e){clearTimeout(ht);const to=e&&e.name==='AbortError';throw Object.assign(new Error(to?'timeout':'net'),{code:to?'timeout':'net'});}clearTimeout(ht);
   if(r.status===401){AUTH.token=null;AUTH.exp=0;LS.set('tok',null);renderSoon();throw Object.assign(new Error('auth'),{code:'auth'});}
   if(!r.ok)throw Object.assign(new Error('HTTP '+r.status),{code:'http',status:r.status});return r;}
 const gjson=(path,params,wait)=>gfetch(G+path+(params?'?'+new URLSearchParams(params):''),{ms:30000},wait).then(r=>r.json());
@@ -584,14 +623,15 @@ function rebuildIndex(){
   S.recentIds=[...tracks.values()].sort((a,b)=>(b.ad||0)-(a.ad||0)).map(t=>t.id);}
 
 /* ===================== listas, me gusta y ajustes, sincronizados ===================== */
-const SY={lists:{},likes:{},pending:new Set(),lastPull:0,
+const SY={lists:{},likes:{},pending:new Set(LS.get('syPend',[])||[]),lastPull:0,
   async loadLocal(){try{const x=await IDB.get('kv','sy');if(x){this.lists=x.lists||{};this.likes=x.likes||{};if(x.cfg)S.cfg=Object.assign(S.cfg,x.cfg);this.local=true;}}catch{}this.apply();},
   saveLocal(){IDB.put('kv','sy',{lists:this.lists,likes:this.likes,cfg:S.cfg}).catch(()=>{});},
   apply(){const pl={};for(const [id,p] of Object.entries(this.lists))if(p&&!p.del)pl[id]=p;S.playlists=pl;
     const lk={};for(const [id,v] of Object.entries(this.likes))if(v>0)lk[id]=v;S.likes=lk;},
   merge(kind,rem){if(kind==='lists'){for(const [id,r] of Object.entries(rem||{})){const l=this.lists[id];if(r&&(!l||(r.up||0)>(l.up||0)))this.lists[id]=r;}}
     else if(kind==='likes'){for(const [id,r] of Object.entries(rem||{})){const l=this.likes[id];if(l==null||Math.abs(r)>Math.abs(l))this.likes[id]=r;}}
-    else if(kind==='cfg'&&rem&&(rem.up||0)>(S.cfg.up||0))S.cfg=Object.assign(S.cfg,rem);},
+    else if(kind==='cfg'&&rem){const lr=S.cfg.rules||{},rr=rem.rules||{};if((rem.up||0)>(S.cfg.up||0))S.cfg=Object.assign(S.cfg,rem);
+      const out={};for(const k of new Set([...Object.keys(lr),...Object.keys(rr)])){const a=lr[k],b=rr[k];out[k]=!a?b:!b?a:((b.at||0)>(a.at||0)?b:a);}S.cfg.rules=out;}},
   async pullAll(){if(!AUTH.ok())return;this.lastPull=Date.now();const mt=LS.get('adMT',{})||{};
     const [pl,lk,aj,st]=await Promise.all(['listas.json','megusta.json','ajustes.json','estado.json'].map(n=>{const f=AD.ids&&AD.ids[n],m=f&&f.modifiedTime;
       if(m&&n!=='estado.json'&&mt[n]===m&&this.local)return null;return AD.read(n).then(x=>{if(m&&x)mt[n]=m;return x;}).catch(()=>null);}));
@@ -599,11 +639,12 @@ const SY={lists:{},likes:{},pending:new Set(),lastPull:0,
     if(pl)this.merge('lists',pl.lists);if(lk)this.merge('likes',lk.ids);if(aj)this.merge('cfg',aj);if(st)S.remoteState=st;
     this.apply();this.saveLocal();renderSoon();DL.sync();for(const k of [...this.pending])this.pushNow(k);},
   push(kind){this.saveLocal();this.apply();clearTimeout(this['t_'+kind]);this['t_'+kind]=setTimeout(()=>this.pushNow(kind),1500);},
-  async pushNow(kind){if(!AUTH.ok()){this.pending.add(kind);return;}
+  savePend(){LS.set('syPend',[...this.pending]);},
+  async pushNow(kind){if(!AUTH.ok()){this.pending.add(kind);this.savePend();return;}
     const name={lists:'listas.json',likes:'megusta.json',cfg:'ajustes.json'}[kind];
     try{const rem=await AD.read(name).catch(()=>null);if(rem)this.merge(kind,kind==='lists'?rem.lists:kind==='likes'?rem.ids:rem);
-      await AD.write(name,kind==='lists'?{lists:this.lists}:kind==='likes'?{ids:this.likes}:S.cfg);this.pending.delete(kind);this.apply();this.saveLocal();renderSoon();}
-    catch(e){this.pending.add(kind);}}};
+      await AD.write(name,kind==='lists'?{lists:this.lists}:kind==='likes'?{ids:this.likes}:S.cfg);this.pending.delete(kind);this.savePend();this.apply();this.saveLocal();renderSoon();}
+    catch(e){this.pending.add(kind);this.savePend();}}};
 function plWrite(id,val){const now=Date.now();if(val===null)SY.lists[id]={del:true,up:now};else SY.lists[id]=Object.assign({},SY.lists[id]&&!SY.lists[id].del?SY.lists[id]:{},val,{up:now});
   SY.push('lists');renderSoon();DL.sync();return Promise.resolve();}
 function isFav(k){return S.likes['fw:'+k]>0;}
@@ -625,14 +666,16 @@ const URB=c=>RADIO_RE.regg.test(c)||RADIO_RE.trap.test(c)||KIND_RE.regg.test(c);
 const capW=x=>String(x||'').replace(/\b\p{L}/gu,m=>m.toUpperCase());
 const stName=k=>{const st=PC.ST.find(x=>x.key==='rad:'+k);return st?st.full:k.toUpperCase()+' FM';};
 function featOf(t){if(t._ft)return t._ft;const as=artistsOf(t),f={pa:as[0]||'',co:as.slice(1),g:norm(t.g||'').split(/\s*[\/,;|]\s*/).filter(x=>x&&x.length>2)};
+  Object.defineProperty(f,'tg',{enumerable:true,get(){const x=artTag(t);return x&&x.s||[];}}); // etiquetas del artista (de Claude), para aprender estilos
   Object.defineProperty(f,'vb',{configurable:true,enumerable:true,get(){const v=[...vibeOf(t)].filter(x=>x[1]!==':');Object.defineProperty(f,'vb',{value:v,enumerable:true});return v;}}); // el estilo solo se calcula si hace falta (es lo caro)
   return t._ft=f;}
 let lrnC={};
 function learned(key){const R=(S.cfg.rules||{})[key]||{};const sig=FBV+':'+Object.keys(S.likes).length+':'+(R.at||0);if(lrnC[key]&&lrnC[key].sig===sig)return lrnC[key];
-  const kind=key.startsWith('rad:')?key.slice(4):null,fb=fbOf(key),dn={pa:{},co:{},g:{},vb:{}},up={pa:{},co:{},g:{},vb:{}};
-  const add=(o,f)=>{o.pa[f.pa]=(o.pa[f.pa]||0)+1;f.co.forEach(c=>o.co[c]=(o.co[c]||0)+1);f.g.forEach(g=>o.g[g]=(o.g[g]||0)+1);f.vb.forEach(v=>{if(v!==kind)o.vb[v]=(o.vb[v]||0)+1;});};
+  const kind=key.startsWith('rad:')?key.slice(4):null,fb=fbOf(key),dn={pa:{},co:{},g:{},vb:{},tg:{}},up={pa:{},co:{},g:{},vb:{},tg:{}};
+  const add=(o,f)=>{o.pa[f.pa]=(o.pa[f.pa]||0)+1;f.co.forEach(c=>o.co[c]=(o.co[c]||0)+1);f.g.forEach(g=>o.g[g]=(o.g[g]||0)+1);f.tg.forEach(g=>o.tg[g]=(o.tg[g]||0)+1);f.vb.forEach(v=>{if(v!==kind)o.vb[v]=(o.vb[v]||0)+1;});};
   for(const id of fb.down){const t=getTrack(id);if(t)add(dn,featOf(t));}for(const id of fb.up){const t=getTrack(id);if(t)add(up,featOf(t));}
-  const ex={pa:new Set((R.exA||[]).filter(a=>!up.pa[a])),co:new Set((R.exC||[]).filter(c=>!up.co[c])),g:new Set(R.exG||[]),vb:new Set()},inA=new Set(R.inA||[]);
+  const ex={pa:new Set((R.exA||[]).filter(a=>!up.pa[a])),co:new Set((R.exC||[]).filter(c=>!up.co[c])),g:new Set(R.exG||[]),vb:new Set(),tg:new Set()},inA=new Set(R.inA||[]);
+  for(const [g,n] of Object.entries(dn.tg))if(n>=3&&!up.tg[g]&&!/espa|ingl|latin|castell|\d0s|\d{4}|energ|bail|melan|alegr|tranq|suave|fuert|calma|feliz|triste|nostalg|romant|urbano|pop$|^pop/.test(g))ex.tg.add(g); // un estilo concreto que solo sale en lo que no encaja
   for(const [a,n] of Object.entries(dn.pa))if(n>=2&&n>(up.pa[a]||0))ex.pa.add(a);
   for(const [c,n] of Object.entries(dn.co))if((n>=2||URB(c))&&n>(up.co[c]||0))ex.co.add(c);
   for(const [g,n] of Object.entries(dn.g))if(n>=3&&n>2*(up.g[g]||0))ex.g.add(g);
@@ -640,7 +683,7 @@ function learned(key){const R=(S.cfg.rules||{})[key]||{};const sig=FBV+':'+Objec
   for(const [a,n] of Object.entries(up.pa))if(n>=2&&!(dn.pa[a]>=n))inA.add(a);
   for(const a of inA)ex.pa.delete(a);
   return lrnC[key]={sig,ex,inA,dn,up,why:R.why||[]};}
-function passLearned(t,L){const f=featOf(t);if(L.ex.pa.has(f.pa))return false;for(const c of f.co)if(L.ex.co.has(c))return false;for(const g of f.g)if(L.ex.g.has(g))return false;if(L.ex.vb.size)for(const v of f.vb)if(L.ex.vb.has(v))return false;return true;}
+function passLearned(t,L){const f=featOf(t);if(L.ex.pa.has(f.pa))return false;if(L.ex.tg&&L.ex.tg.size)for(const g of f.tg)if(L.ex.tg.has(g))return false;for(const c of f.co)if(L.ex.co.has(c))return false;for(const g of f.g)if(L.ex.g.has(g))return false;if(L.ex.vb.size)for(const v of f.vb)if(L.ex.vb.has(v))return false;return true;}
 function explainVote(c,v,t){const L=learned(c.key),f=featOf(t),An=capW(f.pa)||'este artista',kind=c.key.startsWith('rad:')?c.key.slice(4):null,out=[];let sh='';
   if(v>0){const core=kind&&radioKind(t,kind);
     if(L.inA.has(f.pa)&&!core){out.push('Meto más canciones de '+An+' en '+c.name+'.');sh='MÁS DE '+An;}
@@ -679,8 +722,39 @@ async function askWhy(c,t){if(!(S.cfg.apiKey||'').trim()||!navigator.onLine)retu
     if(j.porque)showWhy(String(j.porque)+(n?' Quito '+n+' más de lo que venía.':''));}catch(e){}}
 function stnVote(v,t=P.current){if(!t||t.test)return{msg:'NADA QUE VOTAR'};const c=fbContext();if(!c)return{msg:'VOTA EN UNA EMISORA O EN UNA RADIO'};
   const up='fu:'+c.key+'|'+t.id,dn='fd:'+c.key+'|'+t.id,now=Date.now();SY.likes[v>0?up:dn]=now;SY.likes[v>0?dn:up]=-now;SY.push('likes');FBV++;
-  const ex=explainVote(c,v,t),n=v<0?pruneQueue(c):0;if(v<0)askWhy(c,t);try{updVote();}catch{}
+  const ex=explainVote(c,v,t),n=v<0?pruneQueue(c):0;if(v<0)askWhy(c,t);try{updVote();}catch{}try{REV.soon(c.key);}catch{}clog((v>0?'▲ ':'▼ ')+c.name+': '+(t.a||'')+' — '+(t.t||''));
   return{ok:1,msg:v>0?'✓ ENCAJA EN '+c.name:'✗ FUERA DE '+c.name,why:ex.why+(n?' He quitado '+n+' parecidas de lo que venía.':''),short:ex.short+(n?' · −'+n+' EN COLA':'')};}
+/* Repaso de emisora con Claude: cuando una emisora junta 4 votos nuevos (o más), Claude mira todos tus ▲ y ▼ de esa emisora y cómo suena ahora,
+   y corrige el criterio: qué artistas sobran y cuáles de tu biblioteca faltan. Se guarda en tus ajustes de Drive, así vale en el coche, el móvil y el ordenador */
+const REV={t:{},busy:false,
+  due(key){const fb=fbOf(key),n=fb.up.size+fb.down.size,R=(S.cfg.rules||{})[key]||{};return n>=3&&n-(R.revN||0)>=4&&Date.now()-(R.revAt||0)>20*60e3;},
+  soon(key){if(!(S.cfg.apiKey||'').trim()||!/^rad:/.test(key))return;clearTimeout(this.t[key]);this.t[key]=setTimeout(()=>this.run(key),75000);},
+  all(){if(!(S.cfg.apiKey||'').trim())return;for(const st of PC.ST)if(/^rad:/.test(st.key)&&this.due(st.key))this.soon(st.key);},
+  async run(key){if(this.busy||!navigator.onLine||!this.due(key)||!(S.cfg.apiKey||'').trim())return;this.busy=true;
+    try{const st=PC.ST.find(x=>x.key===key);if(!st)return;const fb=fbOf(key),ids=collIds(key),inSt=new Map(),lib=new Map();
+      for(const id of ids){const t=getTrack(id);if(t){const a=featOf(t).pa;inSt.set(a,(inSt.get(a)||0)+1);}}
+      for(const t of S.tracks.values()){if(t.test)continue;const a=featOf(t).pa;if(a&&!inSt.has(a))lib.set(a,(lib.get(a)||0)+1);}
+      const tl=id=>{const x=getTrack(id);if(!x)return'';const tg=artTag(x);return'- '+(x.a||'?')+' — '+(x.t||'?')+(x.g?' ['+x.g+']':'')+(x.y?' ('+x.y+')':'')+(tg&&tg.s&&tg.s.length?' {'+tg.s.join(', ')+'}':'');};
+      const top=m=>[...m.entries()].sort((a,b)=>b[1]-a[1]).map(([a,n])=>a+' '+n);
+      const prompt='Eres el programador musical de «'+st.full+'» en Spoticar, el reproductor de música de Jaime (coche, móvil y ordenador). Qué tiene que ser la emisora: '+st.d+'.\n'+
+        'Así suena AHORA (artista y nº de canciones suyas en la emisora):\n'+top(inSt).slice(0,90).join(', ')+'\n\n'+
+        'Jaime ha votado canciones de esta emisora.\nNO ENCAJAN:\n'+([...fb.down].map(tl).filter(Boolean).slice(-60).join('\n')||'(ninguna)')+'\nSÍ ENCAJAN:\n'+([...fb.up].map(tl).filter(Boolean).slice(-60).join('\n')||'(ninguna)')+'\n\n'+
+        'Artistas de su biblioteca que ahora NO están en la emisora (con nº de canciones):\n'+top(lib).slice(0,320).join(', ')+'\n\n'+
+        'Con lo que ha votado, revisa el criterio de la emisora pensando en el estilo, no canción a canción: qué artistas de los que suenan sobran (por lo mismo que lo que marcó que no encaja) y qué artistas de su biblioteca faltan (encajan con la emisora y con lo que marcó que sí). '+
+        'Nunca quites un artista que tenga canciones marcadas como que SÍ encajan. Usa los nombres exactamente como aparecen arriba. Si no hay nada claro, deja las listas vacías.\n'+
+        'Responde SOLO con JSON: {"quitar_artistas":[],"anadir_artistas":[],"porque":"una o dos frases cortas de autocrítica, hablándole de tú"}';
+      const txt=await claudeAsk(prompt,900);const j=JSON.parse(txt.slice(txt.indexOf('{'),txt.lastIndexOf('}')+1));
+      const L=learned(key),upA=new Set(Object.keys(L.up.pa||{})),N=a=>(Array.isArray(a)?a:[]).map(x=>norm(String(x))).filter(Boolean);
+      const quitar=N(j.quitar_artistas).filter(a=>inSt.has(a)&&!upA.has(a)).slice(0,25),anadir=N(j.anadir_artistas).filter(a=>lib.has(a)).slice(0,25);
+      const rules=Object.assign({},S.cfg.rules||{}),R=Object.assign({},rules[key]||{}),U=(a,b)=>[...new Set([...(a||[]),...b])].slice(-120);
+      R.exA=U((R.exA||[]).filter(a=>!anadir.includes(a)),quitar);R.inA=U((R.inA||[]).filter(a=>!quitar.includes(a)),anadir);
+      R.revN=fb.up.size+fb.down.size;R.revAt=Date.now();R.at=Date.now();if(j.porque)R.why=[...(R.why||[]),{at:Date.now(),t:'Repaso de '+st.full,p:String(j.porque).slice(0,300)}].slice(-30);
+      rules[key]=R;setCfg({rules});radioCache={sig:'',m:{}};
+      clog('repaso de '+st.full+' con Claude: −'+quitar.length+' artistas, +'+anadir.length+(quitar.length?' (fuera: '+quitar.slice(0,6).join(', ')+')':'')+(anadir.length?' (dentro: '+anadir.slice(0,6).join(', ')+')':''));
+      if(P.src===key){const n=pruneQueue({key,name:st.full});if(n)try{renderQueueIfOpen();}catch{}}
+      try{if(document.body.classList.contains('carmode')&&(quitar.length||anadir.length))CAR.say(st.full+' AFINADA CON TUS VOTOS',4000);}catch{}}
+    catch(e){clog('repaso de emisora falló: '+(e&&e.message||e));const rules=Object.assign({},S.cfg.rules||{}),R=Object.assign({},rules[key]||{});R.revAt=Date.now();rules[key]=R;S.cfg.rules=rules;}
+    finally{this.busy=false;}}};
 /* botones de voto en el móvil y el ordenador (en el coche se desliza la carátula) */
 function updVote(){const c=S.ctrl?null:fbContext(),t=P.current,fb=c&&t?fbOf(c.key):null;
   $$('[data-k=voteRow]').forEach(r=>{r.hidden=!c||!t;if(!c||!t)return;const l=r.querySelector('[data-k=voteLbl]');if(l)l.textContent=c.name;
@@ -690,7 +764,7 @@ function votesText(){const I=fbIndex(),L=[];const nm=k=>{if(k.startsWith('ra:'))
   for(const k of new Set([...Object.keys(I.up),...Object.keys(I.down)])){L.push('## '+nm(k));for(const [lab,set] of [['ENCAJAN',I.up[k]],['NO ENCAJAN',I.down[k]]]){if(!set||!set.size)continue;L.push(lab+':');for(const id of set){const t=getTrack(id);if(t)L.push('- '+(t.a||'?')+' — '+(t.t||'?')+' ('+[t.al,t.y,t.g].filter(Boolean).join(' · ')+')');}}
     if(k.startsWith('rad:')){try{const ids=collIds(k),c={};for(const id of ids){const t=getTrack(id);if(t){const a=t.aa||t.a||'?';c[a]=(c[a]||0)+1;}}
       L.push('SUENAN AHORA ('+ids.length+' canciones): '+Object.entries(c).sort((x,y)=>y[1]-x[1]).slice(0,45).map(([a,n])=>a+' '+n).join(', '));}catch{}}
-    const Ln=learned(k),rl=[];if(Ln.ex.pa.size)rl.push('fuera artistas: '+[...Ln.ex.pa].join(', '));if(Ln.ex.co.size)rl.push('fuera colaboraciones con: '+[...Ln.ex.co].join(', '));if(Ln.ex.g.size)rl.push('fuera géneros: '+[...Ln.ex.g].join(', '));if(Ln.ex.vb.size)rl.push('fuera lo que suena a: '+[...Ln.ex.vb].map(stName).join(', '));if(Ln.inA.size)rl.push('más de: '+[...Ln.inA].join(', '));
+    const Ln=learned(k),rl=[];if(Ln.ex.pa.size)rl.push('fuera artistas: '+[...Ln.ex.pa].join(', '));if(Ln.ex.co.size)rl.push('fuera colaboraciones con: '+[...Ln.ex.co].join(', '));if(Ln.ex.g.size)rl.push('fuera géneros: '+[...Ln.ex.g].join(', '));if(Ln.ex.vb.size)rl.push('fuera lo que suena a: '+[...Ln.ex.vb].map(stName).join(', '));if(Ln.ex.tg&&Ln.ex.tg.size)rl.push('fuera el estilo: '+[...Ln.ex.tg].join(', '));if(Ln.inA.size)rl.push('más de: '+[...Ln.inA].join(', '));
     if(rl.length)L.push('LO QUE HE APRENDIDO: '+rl.join(' · '));for(const w of (Ln.why||[]).slice(-5))L.push('AUTOCRÍTICA ('+w.t+'): '+w.p);L.push('');}
   return L.join('\n')||'Todavía no has votado ninguna canción.';}
 function toggleLike(id){if(!S.tracks.has(id))return;const on=!S.likes[id];SY.likes[id]=on?Date.now():-Date.now();SY.push('likes');updateLikeUI();}
@@ -770,7 +844,7 @@ const AE={decks:[$('#deckA'),$('#deckB')],cur:0,ctx:null,n:null,xf:false,urls:[n
   applyEq(){if(!this.n)return;const g=this.gains();this.n.bands.forEach((b,i)=>b.gain.setTargetAtTime(g[i]||0,this.ctx.currentTime,.05));},
   applyLevel(){if(!this.n)return;const c=this.n.comp,on=prefs.level||prefs.eq==='noche';c.threshold.value=on?-26:0;c.knee.value=on?24:0;c.ratio.value=on?4:1;c.attack.value=.005;c.release.value=.25;this.applyVol();},
   applyVol(){const v=prefs.vol;if(this.n)this.n.mg.gain.setTargetAtTime(v*v*((prefs.level||prefs.eq==='noche')?1.6:1),this.ctx.currentTime,.03);else this.decks.forEach(d=>d.volume=Math.min(1,v*v));},
-  async resume(){this.ensure();if(this.ctx&&this.ctx.state!=='running'){try{await this.ctx.resume();}catch{}}},
+  async resume(){this.ensure();if(this.ctx&&this.ctx.state!=='running'){try{await Promise.race([this.ctx.resume(),new Promise(r=>setTimeout(r,1500))]);}catch{}}}, // sin toque, el navegador puede dejarlo esperando: no se espera más de 1,5 s
   setLevel(i,v,ramp){if(!this.n)return;const g=this.n.dg[i].gain,t=this.ctx.currentTime;g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);if(ramp)g.linearRampToValueAtTime(v,t+ramp);else g.setValueAtTime(v,t);}};
 
 /* ===================== canciones guardadas en el aparato (caché automática) =====================
@@ -781,8 +855,8 @@ const AC={db:null,dbp:null,ids:new Set(),sz:new Map(),used:0,max:1500*1048576,ok
     r.onupgradeneeded=()=>{const d=r.result;for(const n of ['b','m','k'])if(!d.objectStoreNames.contains(n))d.createObjectStore(n);};
     r.onsuccess=()=>{this.db=r.result;this.db.onversionchange=()=>{try{this.db.close();}catch{}this.db=null;this.dbp=null;};res(this.db);};
     r.onerror=()=>{this.dbp=null;rej(r.error);};r.onblocked=()=>{this.dbp=null;rej(new Error('blocked'));};}));},
-  async tx(st,mode,fn){const d=await this.open();return new Promise((res,rej)=>{const t=d.transaction(st,mode);const q=fn(t.objectStore(Array.isArray(st)?st[0]:st),t);
-    t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error);});},
+  async tx(st,mode,fn){const d=await withTO(this.open(),6000);return withTO(new Promise((res,rej)=>{const t=d.transaction(st,mode);const q=fn(t.objectStore(Array.isArray(st)?st[0]:st),t);
+    t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error);}),mode==='readonly'?6000:20000);},
   async init(){try{const keys=await this.tx('m','readonly',s=>s.getAllKeys()),vals=await this.tx('m','readonly',s=>s.getAll());
       keys.forEach((k,i)=>{const z=(vals[i]&&vals[i].sz)||0;this.ids.add(k);this.sz.set(k,z);this.used+=z;});this.ok=true;
       try{const e=navigator.storage&&navigator.storage.estimate&&await navigator.storage.estimate();if(e&&e.quota)this.max=Math.max(150*1048576,Math.min(1500*1048576,e.quota*.35));}catch{}
@@ -805,9 +879,11 @@ const AC={db:null,dbp:null,ids:new Set(),sz:new Map(),used:0,max:1500*1048576,ok
 const playable=id=>{if(S.dl.has(id)||AC.ids.has(id)||BL.mem.has(id))return true;const t=getTrack(id);return!!(t&&(t.test||t.demo));};
 const netOK=()=>navigator.onLine&&AUTH.ok();
 /* La primera de una emisora, mejor una que ya esté en el aparato: arranca al instante. Sin red o sin Google, primero todo lo guardado */
-function cachedFirst(q,at=0){if(!q.length||at>=q.length||playable(q[at]))return q;const r=q.slice();
-  if(!netOK()){const head=r.slice(0,at),rest=r.slice(at);return head.concat(rest.filter(playable),rest.filter(id=>!playable(id)));}
-  const j=r.findIndex((id,i)=>i>at&&i<at+40&&playable(id));if(j>0)[r[at],r[j]]=[r[j],r[at]];return r;}
+/* Solo sin red o sin Google: entonces primero lo que ya está en el aparato (en el orden de la programación, que ya aparta lo que acaba de sonar).
+   Con red no se toca nada: si no, la emisora acababa empezando siempre por las mismas (las que ya se habían guardado) */
+function cachedFirst(q,at=0){if(netOK()||!q.length||at>=q.length)return q;const head=q.slice(0,at),rest=q.slice(at);return head.concat(rest.filter(playable),rest.filter(id=>!playable(id)));}
+/* cola de una emisora: la programación de siempre; sin red o sin Google, primero una programación hecha solo con las suyas que ya están en el aparato */
+function stationQueue(src,ids){const q=radioOrder(src,ids);if(netOK())return q;const pl=ids.filter(playable);if(!pl.length)return q;return radioOrder(src,pl).concat(q.filter(id=>!playable(id)));}
 
 /* Streaming: la canción empieza a sonar en cuanto llegan los primeros trozos, a través del service worker (sw.js),
    que pide los trozos a Drive con el acceso en la cabecera (nunca en la dirección) y la guarda entera al acabar */
@@ -839,7 +915,7 @@ async function readBlob(r,stall=30000){const rd=r.body&&r.body.getReader&&r.body
 /* audio desde Drive: la canción entera (cuando no hay streaming) y las siguientes preparadas en el aparato */
 const BL={mem:new Map(),inflight:new Map(),
   get(t,wait){if(this.mem.has(t.id))return Promise.resolve(this.mem.get(t.id));if(this.inflight.has(t.id))return this.inflight.get(t.id);
-    const p=(async()=>{const b=await readBlob(await gfetch(G+'/files/'+t.id+'?alt=media',{},wait));this.mem.set(t.id,b);AC.put(t.id,b);
+    const p=(async()=>{const b=await readBlob(await gfetch(G+'/files/'+t.id+'?alt=media',{hms:25000},wait));this.mem.set(t.id,b);AC.put(t.id,b);
       while(this.mem.size>3){const k=[...this.mem.keys()].find(k=>k!==(P.current&&P.current.id));this.mem.delete(k);}return b;})();
     this.inflight.set(t.id,p);p.finally(()=>this.inflight.delete(t.id)).catch(()=>{});return p;},
   /* las siguientes de la cola, de una en una; si la que suena aún está llegando por streaming, se espera (no se reparte la poca cobertura) */
@@ -868,18 +944,27 @@ const P={q:[],orig:null,qi:-1,shuffle:false,repeat:'off',src:'',
     if(o.shuffle!==undefined)this.shuffle=o.shuffle;try{noteCtx(src,ids,start);}catch{}
     if(start<0||start>=ids.length)start=this.shuffle?Math.floor(Math.random()*ids.length):0;
     this.orig=ids.slice();this.src=src;
-    if(this.shuffle&&/^(rad:|likes$)/.test(src)&&typeof radioOrder==='function'){this.q=cachedFirst(radioOrder(src,ids));await this.load(0);}
+    if(this.shuffle&&/^(rad:|likes$)/.test(src)&&typeof radioOrder==='function'){this.q=stationQueue(src,ids);await this.load(0);}
     else if(this.shuffle){const first=ids[start];this.q=[first,...shuffleArr(ids.filter((_,i)=>i!==start))];if(o.anyFirst||src==='all')this.q=cachedFirst(this.q);await this.load(0);}
     else{this.q=ids.slice();await this.load(start);}},
   async load(i,{autoplay=true,pos=0,noStream=false}={}){endListen();if(AE.xf)cancelXf();
-    this.qi=i;const lt=this.lt=(this.lt||0)+1;const t=this.current;if(!t)return;onTrackChange();let url;const car=document.body.classList.contains('carmode');STREAM.busy=null;
-    try{url=await srcFor(t,{wait:!car,noStream:noStream||this.noStreamFor===t.id});}catch(e){if(this.lt!==lt)return;
+    this.qi=i;const lt=this.lt=(this.lt||0)+1;const t=this.current;if(!t)return;this.loadAt=Date.now();this.loading=lt;this.loadAuto=autoplay;
+    if(!AE.el.paused&&!AE.el.ended){this.selfPause=performance.now();AE.el.pause();} // la de antes se calla ya (antes seguía sonando mientras llegaba la nueva y parecía colgado)
+    onTrackChange();let url;const car=document.body.classList.contains('carmode');STREAM.busy=null;
+    try{url=await srcFor(t,{wait:!car,noStream:noStream||this.noStreamFor===t.id});}catch(e){if(this.lt!==lt)return;this.loading=0;
       if(['offline','no_token','auth','net','timeout'].includes(e.code)&&this.jumpPlayable(i,lt,{autoplay}))return; // sin red o sin Google: otra que ya esté en el aparato
-      AE.errs++;
-      if(car&&(e.code==='no_token'||e.code==='auth')){try{CAR.say('TOCA PARA CONECTAR CON GOOGLE',5000);}catch{}}
-      else toast(e.code==='offline'?'Sin conexión y «'+(t.t||'')+'» no está descargada':e.code==='no_token'||e.code==='auth'?'Toca la pantalla para reconectar con Google':'No se pudo cargar «'+(t.t||'')+'»');
-      if(e.code!=='no_token'&&e.code!=='auth'&&AE.errs<4&&this.qi+1<this.q.length)setTimeout(()=>{if(this.lt===lt)this.load(this.qi+1);},1200);else AE.errs=0;renderPlayer();return;}
-    if(this.lt!==lt)return;
+      AE.errs++;clog('no carga «'+(t.t||'')+'» ('+(e.code||e.message||'?')+')');const noAcc=e.code==='no_token'||e.code==='auth';
+      if(car){ // en el coche no se rinde: se renueva el acceso por detrás (o se espera a la cobertura) y se vuelve a intentar solo
+        try{CAR.say(noAcc?'CONECTANDO CON GOOGLE…':!navigator.onLine?'SIN COBERTURA · ESPERANDO':'REINTENTANDO…',5000);}catch{}
+        const again=()=>{if(this.lt===lt&&this.qi===i)this.load(i,{autoplay});};
+        if(noAcc)AUTH.refresh().then(ok=>{if(ok)again();else setTimeout(again,30000);});
+        else if(!navigator.onLine){const on=()=>{removeEventListener('online',on);setTimeout(again,2000);};addEventListener('online',on);setTimeout(()=>{removeEventListener('online',on);again();},60000);}
+        else if(AE.errs<4&&this.qi+1<this.q.length)setTimeout(()=>{if(this.lt===lt)this.load(this.qi+1,{autoplay});},1200);
+        else{AE.errs=0;setTimeout(again,15000);}
+        renderPlayer();return;}
+      toast(e.code==='offline'?'Sin conexión y «'+(t.t||'')+'» no está descargada':noAcc?'Toca la pantalla para reconectar con Google':'No se pudo cargar «'+(t.t||'')+'»');
+      if(!noAcc&&AE.errs<4&&this.qi+1<this.q.length)setTimeout(()=>{if(this.lt===lt)this.load(this.qi+1);},1200);else AE.errs=0;renderPlayer();return;}
+    if(this.lt!==lt)return;this.loading=0;autoplay=this.loadAuto;
     setDeckSrc(AE.cur,url);
     if(pos>0){const d=AE.el,once=()=>{try{d.currentTime=pos;}catch{}d.removeEventListener('loadedmetadata',once);};d.addEventListener('loadedmetadata',once);}
     if(/^stream\//.test(url))streamWatch(AE.cur,t.id,lt);
@@ -887,14 +972,16 @@ const P={q:[],orig:null,qi:-1,shuffle:false,repeat:'off',src:'',
   /* la que tocaba no se puede bajar ahora: se adelanta la primera guardada de la cola (la otra no se pierde, se queda más adelante) */
   jumpPlayable(i,lt,o={}){let j=-1;for(let k=i+1;k<Math.min(this.q.length,i+400);k++)if(playable(this.q[k])){j=k;break;}
     if(j<0){const src=this.src||'',pool=/^(rad:|likes|all|pl:|al:|ar:)/.test(src)?collIds(src):[...AC.ids].filter(id=>S.tracks.has(id)),recent=new Set(this.q.slice(Math.max(0,i-80),i));
-      const c=shuffleArr(pool.filter(id=>playable(id)&&!recent.has(id)&&id!==this.q[i]));if(!c.length)return false;this.q.splice(i+1,0,c[0]);j=i+1;}
+      const c=shuffleArr(pool.filter(id=>playable(id)&&!recent.has(id)&&id!==this.q[i])).sort((a,b)=>(HIST[a]||0)-(HIST[b]||0));if(!c.length)return false; // la guardada que lleve más tiempo sin sonar
+      this.q.splice(i+1,0,c[Math.floor(Math.random()*Math.min(4,c.length))]);j=i+1;}
     [this.q[i],this.q[j]]=[this.q[j],this.q[i]];setTimeout(()=>{if(this.lt===lt)this.load(i,o);},0);return true;},
-  async resume(){if(S.ctrl)return remoteCmd({op:'play1'});if(!this.current)return this.toggle();await AE.resume();
+  async resume(){if(S.ctrl)return remoteCmd({op:'play1'});if(this.loading&&this.loading===this.lt){this.loadAuto=true;return;}if(!this.current)return this.toggle();await AE.resume();
     try{await AE.el.play();}catch(e){if(e&&e.name==='NotAllowedError'){if(document.body.classList.contains('carmode')){try{CAR.say('TOCA LA PANTALLA PARA EMPEZAR',7000);}catch{}}else toast('Toca ▶ para empezar');}else if(e&&e.name!=='AbortError'){console.warn(e);}}},
-  pause(){if(S.ctrl)return remoteCmd({op:'pause'});P.selfPause=performance.now();P.pausedAt=Date.now();AE.decks.forEach(d=>d.pause());},
+  pause(){if(S.ctrl)return remoteCmd({op:'pause'});P.selfPause=performance.now();P.pausedAt=Date.now();if(P.loading)P.loadAuto=false;AE.decks.forEach(d=>d.pause());},
   async toggle(){if(S.ctrl)return remoteCmd({op:'toggle'});
     if(!this.current&&document.body.classList.contains('carmode')){let c=null;try{c=CAR;}catch{}if(c&&c.tuneCurrent&&c.tuneCurrent())return;}
     if(!this.current){const ids=S.allIds.length?S.allIds:collIds('test');if(!ids.length){await makeTests();return this.play(collIds('test'),0,'test');}return this.play(ids,-1,'all',{shuffle:true});}
+    if(this.loading&&this.loading===this.lt){this.loadAuto=!this.loadAuto;if(!this.loadAuto)this.pause();return;} // aún llegando: se decide si suena al llegar
     if(AE.el.paused)await this.resume();else this.pause();},
   async next(auto=false){if(S.ctrl&&!auto)return remoteCmd({op:'next'});const i=this.nextIdx(auto);
     if(auto&&i!=null&&i!==this.qi&&AUTH.needBoundary()&&await AUTH.boundary(i))return;
@@ -937,35 +1024,58 @@ function similarTo(t,n,ex,hint){if(!t||t.test||!S.tracks.size)return[];const mat
   return sh;}
 
 /* si el streaming no arranca en 20 s (o falla), la misma canción se baja entera por el camino de siempre */
-function streamFallback(t,pos){STREAM.fail();STREAM.busy=null;P.noStreamFor=t.id;setTimeout(()=>{if(P.current&&P.current.id===t.id)P.load(P.qi,{pos,noStream:true});},300);}
+function streamFallback(t,pos){clog('streaming falla con «'+(t.t||'')+'»: se baja entera');STREAM.fail();STREAM.busy=null;P.noStreamFor=t.id;setTimeout(()=>{if(P.current&&P.current.id===t.id)P.load(P.qi,{pos,noStream:true});},300);}
 function streamWatch(i,id,lt){const d=AE.decks[i],t0=Date.now();const iv=setInterval(()=>{if(P.lt!==lt||!P.current||P.current.id!==id||!/^stream\//.test(d.getAttribute('src')||'')){clearInterval(iv);return;}
     if(d.readyState>=3||d.currentTime>0||(d.paused&&d.readyState>=1)){clearInterval(iv);STREAM.fails=0;return;}if(Date.now()-t0>25000&&navigator.onLine&&!(d.buffered&&d.buffered.length)){clearInterval(iv);streamFallback(P.current,0);}},1000);} // solo si no ha llegado nada: con poca cobertura, mejor esperar que empezar de cero
+/* Vigilante: si la música debería estar sonando y no avanza (la cobertura se cae a media canción, el audio del sistema se queda parado…),
+   se recupera sola: primero la misma canción por otro camino, luego la siguiente. Todo queda apuntado en el registro */
+const WD={t:-1,at:0,buf:0,tries:0,ctxAt:0,
+  tick(){const d=AE.el,now=Date.now();if(S.ctrl||!P.current){this.t=-1;this.at=now;return;}
+    if(AE.ctx&&AE.ctx.state!=='running'&&!d.paused&&!d.ended&&now-this.ctxAt>4000){this.ctxAt=now;clog('audio del sistema parado ('+AE.ctx.state+'): se reanuda');AE.ctx.resume().catch(()=>{});}
+    if(P.loading&&P.loading===P.lt&&now-(P.loadAt||now)>70000&&document.body.classList.contains('carmode')){clog('carga atascada más de 70 s: siguiente');P.loading=0;P.next(true);return;}
+    if(d.paused||d.ended||d.seeking||AE.xf||S.loading||P.loading){this.t=d.currentTime;this.at=now;this.buf=0;return;}
+    if(Math.abs(d.currentTime-this.t)>.05){this.t=d.currentTime;this.at=now;this.tries=0;return;}
+    const stream=/^stream\//.test(d.getAttribute('src')||''),b=d.buffered&&d.buffered.length?d.buffered.end(d.buffered.length-1):0;
+    if(b>this.buf+.3){this.buf=b;if(now-this.at<45000)return;} // va llegando, aunque despacio: se espera
+    if(now-this.at<(stream?(d.readyState===0?10000:16000):12000))return;this.at=now;const t=P.current,pos=d.currentTime||0;this.tries++; // por streaming sin haber llegado nada: 10 s
+    clog('atascada «'+(t.t||'')+'» en '+Math.round(pos)+' s ('+(stream?'streaming':'archivo')+', red '+(navigator.onLine?'sí':'no')+', intento '+this.tries+')');
+    if(!netOK()&&!playable(t.id)){if(!P.jumpPlayable(P.qi,P.lt,{}))P.next(true);return;}
+    if(stream&&P.noStreamFor!==t.id){streamFallback(t,pos);return;}
+    if(this.tries<2){P.load(P.qi,{pos,noStream:true});return;}
+    this.tries=0;P.next(true);}};
+setInterval(()=>{try{WD.tick();}catch(e){}},2000);
+document.addEventListener('pointerdown',()=>{if(AE.ctx&&AE.ctx.state!=='running')AE.ctx.resume().catch(()=>{});},true); // un toque despierta el audio si el sistema lo paró
 /* eventos de las platinas */
 AE.decks.forEach((d,i)=>{
   d.addEventListener('timeupdate',()=>{if(i!==AE.cur)return;tickListen();maybeXf();updateTime();});
-  d.addEventListener('ended',()=>{if(i!==AE.cur||AE.xf)return;P.next(true);});
+  d.addEventListener('ended',()=>{if(i!==AE.cur)return;if(AE.xf){if(AE.xfOn)return;cancelXf();clog('acaba sin fundido listo: siguiente');}P.next(true);});
   d.addEventListener('playing',()=>{if(i===AE.cur){AE.errs=0;P.pausedAt=0;renderPlayer();wake();updateMSPos();BL.prefetch(prefetchN());}});
-  d.addEventListener('pause',()=>{if(i===AE.cur&&!AE.xf){renderPlayer();saveStateNow();presenceSoon();}});
+  d.addEventListener('pause',()=>{if(i===AE.cur&&!AE.xf){renderPlayer();saveStateNow();presenceSoon();if(!d.ended&&performance.now()-(P.selfPause||0)>1500&&Date.now()-(P.loadAt||0)>3000)clog('pausa que no viene de la app (sistema o navegador)');}});
   d.addEventListener('loadedmetadata',()=>{if(i===AE.cur){renderDials();updateMSPos();}});
   d.addEventListener('seeking',()=>{if(i===AE.cur)L.last=null;});
   d.addEventListener('error',()=>{if(i!==AE.cur||!d.getAttribute('src'))return;const t=P.current;if(!t)return;
     if(/^stream\//.test(d.getAttribute('src'))&&P.noStreamFor!==t.id){streamFallback(t,d.currentTime||0);return;}
-    AE.errs++;toast('No se pudo reproducir «'+(t.t||'')+'»');
-    if(AE.errs<4)setTimeout(()=>{if(P.current&&P.current.id===t.id)P.next(true);},1200);else{AE.errs=0;renderPlayer();}});});
+    AE.errs++;const er=d.error;clog('no suena «'+(t.t||'')+'» (error '+(er?er.code:'?')+')');const car=document.body.classList.contains('carmode');
+    if(!car)toast('No se pudo reproducir «'+(t.t||'')+'»');
+    if(car&&!netOK()&&P.jumpPlayable(P.qi,P.lt,{}))return; // sin red o sin Google: otra ya guardada
+    if(AE.errs<4)setTimeout(()=>{if(P.current&&P.current.id===t.id)P.next(true);},1200);
+    else{AE.errs=0;renderPlayer();if(car){clog('varios fallos seguidos: se reintenta en 15 s');setTimeout(()=>{if(P.current&&P.current.id===t.id&&AE.el.paused)P.next(true);},15000);}}});});
 
 function maybeXf(){if(AE.xf||!AE.n||!prefs.fx||prefs.xf<=0||P.repeat==='one'||AUTH.needBoundary())return;const d=AE.el,dur=d.duration;
   if(!isFinite(dur)||dur<prefs.xf*2+6||dur-d.currentTime>prefs.xf)return;const ni=P.nextIdx(false);if(ni==null)return;startXf(ni);}
-async function startXf(ni){AE.xf=true;const t=getTrack(P.q[ni]);if(!t){AE.xf=false;return;}const o=1-AE.cur;
-  let url;try{url=await srcFor(t,{});}catch{AE.xf=false;return;} // no se puede preparar: se deja acabar y la siguiente se busca como siempre
-  if(!AE.xf)return;setDeckSrc(o,url);const od=AE.decks[o];AE.setLevel(o,0);
-  try{await od.play();}catch{AE.xf=false;return;}
+async function startXf(ni){const tok=AE.xfTok=(AE.xfTok||0)+1;AE.xf=true;AE.xfOn=false;const t=getTrack(P.q[ni]);if(!t){AE.xf=false;return;}const o=1-AE.cur,cur=AE.cur;
+  const giveUp=why=>{if(AE.xfTok!==tok)return;AE.xf=false;AE.xfOn=false;try{AE.decks[o].pause();}catch{}AE.setLevel(o,0);if(why)clog('fundido cancelado: '+why);if(AE.decks[cur].ended&&AE.cur===cur)P.next(true);};
+  let url;try{url=await withTO(srcFor(t,{}),7000);}catch(e){giveUp(e&&e.code);return;} // no se puede preparar a tiempo: se deja acabar y la siguiente se busca como siempre
+  if(!AE.xf||AE.xfTok!==tok)return;setDeckSrc(o,url);const od=AE.decks[o];AE.setLevel(o,0);
+  try{await withTO(od.play(),7000);}catch(e){giveUp('no arranca');return;}
+  if(!AE.xf||AE.xfTok!==tok){try{od.pause();}catch{}return;}AE.xfOn=true;
   const secs=prefs.xf,old=AE.cur;AE.setLevel(o,1,secs);AE.setLevel(old,0,secs);endListen();AE.cur=o;P.qi=ni;startListen(t);onTrackChange();
-  AE.xfTimer=setTimeout(()=>{AE.decks[old].pause();AE.xf=false;},secs*1000+120);}
-function cancelXf(){clearTimeout(AE.xfTimer);AE.decks[1-AE.cur].pause();AE.setLevel(AE.cur,1);AE.setLevel(1-AE.cur,0);AE.xf=false;}
+  AE.xfTimer=setTimeout(()=>{AE.decks[old].pause();AE.xf=false;AE.xfOn=false;},secs*1000+120);}
+function cancelXf(){clearTimeout(AE.xfTimer);AE.xfTok=(AE.xfTok||0)+1;AE.decks[1-AE.cur].pause();AE.setLevel(AE.cur,1);AE.setLevel(1-AE.cur,0);AE.xf=false;AE.xfOn=false;}
 
 /* minutos escuchados de verdad */
 const L={t:null,secs:0,last:null};
-function startListen(t){L.t=t;L.secs=0;L.last=null;}
+function startListen(t){L.t=t;L.secs=0;L.last=null;if(t&&!t.test)noteHist(t.id);}
 function tickListen(){const ct=AE.el.currentTime;if(L.last!=null&&!AE.el.paused){const dd=ct-L.last;if(dd>0&&dd<1.6)L.secs+=dd;}L.last=ct;}
 function endListen(){if(L.t)try{noteTaste(L.t,L.secs);}catch{}if(L.t&&L.secs>=5)recordListen(L.t,L.secs);L.t=null;L.secs=0;L.last=null;}
 addEventListener('pagehide',()=>{endListen();saveStateNow();});
@@ -1760,7 +1870,8 @@ document.addEventListener('scroll',()=>{$('#tip').hidden=true;},true);
 /* ===================== ajustes ===================== */
 function viewSettings(v){v.append(h('h1',null,'Ajustes'));
   v.append(h('div',{class:'sec'},secH('Tus votos de emisoras'),h('div',{class:'note'},'En el coche desliza la carátula hacia arriba (encaja) o hacia abajo (no encaja). En el móvil y el ordenador tienes ▲ y ▼ junto a la canción. Con cada «no encaja» la emisora aprende por qué y quita lo parecido; con tu clave de Claude, además te explica en qué se equivocó. Aquí puedes copiar tus votos y lo aprendido.'),
-    h('div',{class:'row'},h('button',{class:'pbtn',onclick:async()=>{const tx=votesText();try{await navigator.clipboard.writeText(tx);toast('Votos copiados');}catch{openSheet(h('textarea',{style:'width:100%;height:60vh'},tx));}}},ic('list'),'Copiar mis votos'))));
+    h('div',{class:'row'},h('button',{class:'pbtn',onclick:async()=>{const tx=votesText();try{await navigator.clipboard.writeText(tx);toast('Votos copiados');}catch{openSheet(h('textarea',{style:'width:100%;height:60vh'},tx));}}},ic('list'),'Copiar mis votos'),
+      h('button',{class:'pbtn ghost',onclick:async()=>{const tx='REGISTRO DE SPOTICAR ('+(device?device.name:'')+')\n'+CLOG.join('\n');try{await navigator.clipboard.writeText(tx);toast('Registro copiado');}catch{openSheet(h('textarea',{style:'width:100%;height:60vh'},tx));}}},'Copiar registro (si algo falla)'))));
   const nm=h('input',{type:'text',id:'devName',value:device?device.name:'',maxlength:'30',autocomplete:'off'});
   nm.addEventListener('change',()=>{const val=nm.value.trim();if(!val||!device)return;device.name=val;LS.set('dev',device);presenceNow();toast('Guardado');});
   v.append(h('div',{class:'sec'},secH('Este aparato'),h('div',{class:'row'},...Object.entries(KIND).map(([k,o])=>h('button',{class:'chip'+(device&&device.kind===k?' on':''),onclick:()=>{
@@ -1911,7 +2022,8 @@ function loginCard(){return h('div',{class:'sec'},
   h('div',{class:'lcd',style:'padding:18px 20px'},h('div',{style:'font-size:22px'},'SPOTICAR'),h('div',{class:'dim',style:'font-size:14px;margin-top:4px'},'Tu música, desde tu Google Drive.')),
   h('p',{class:'sub',style:'margin:0;max-width:60ch'},'Entra con tu cuenta de asturtalent.org. La app solo lee tu música y guarda tus listas en una zona privada de tu Drive.'),
   h('div',{class:'row'},h('button',{class:'pbtn amber','data-act':'login'},'Entrar con Google'),h('button',{class:'pbtn','data-act':'soundTest'},ic('wave'),'Prueba de sonido')));}
-ACT.login=()=>{if(!navigator.onLine){toast('Sin conexión');return;}const ok=AUTH.request();if(!ok){AUTH.redirect();return;}clearTimeout(AUTH.lt);AUTH.lt=setTimeout(()=>{if(!AUTH.ok()&&AUTH.busy){AUTH.busy=false;AUTH.fail('popup');}},2500);};
+ACT.login=()=>{if(!navigator.onLine){toast('Sin conexión');return;}if(FORCE==='car'||document.body.classList.contains('carmode')){AUTH.redirect();return;} // en la tablet, sin ventanas: en esta misma pantalla
+  const ok=AUTH.request();if(!ok){AUTH.redirect();return;}clearTimeout(AUTH.lt);AUTH.lt=setTimeout(()=>{if(!AUTH.ok()&&AUTH.busy){AUTH.busy=false;AUTH.fail('popup');}},2500);};
 ACT.sync=el=>SYNC.run(el.dataset.deep==='1');
 ACT.syncStop=()=>{SYNC.cancel=true;toast('Parando…');};
 
@@ -1936,11 +2048,11 @@ let firstAuth=true;
 async function onAuth(){renderAll();const was=firstAuth;firstAuth=false;STREAM.send();
   if(!S.email){try{const j=await gjson('/about',{fields:'user(emailAddress)'});S.email=j.user.emailAddress;LS.set('email',S.email);}catch{}}
   try{await AD.list();}catch{}
-  await Promise.all([SY.pullAll().catch(()=>{}),LIB.pull().catch(()=>{}),loadStats()]);
+  await Promise.all([SY.pullAll().catch(()=>{}),LIB.pull().catch(()=>{}),loadStats(),ARTS.pull()]);
   if(was){const pend=device&&device.kind==='pc'&&(!LIB.idx||Object.values(LIB.idx.tracks).some(e=>!e.x));
     // canciones nuevas: si no hay biblioteca, ya; si no, solo los cambios de Drive, y en el coche cuando ya está sonando
     if(!LIB.idx||pend)SYNC.run(pend);else if(Date.now()-SYNC.last>10*60e3)setTimeout(()=>SYNC.quick(),document.body.classList.contains('carmode')?25000:1500);}
-  DL.sync();if(S.stats)pushStats();renderAll();}
+  DL.sync();if(S.stats)pushStats();renderAll();if(was)setTimeout(()=>{try{REV.all();}catch{}},60000);}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AUTH.ok()&&Date.now()-SY.lastPull>60e3){SY.lastPull=Date.now();AD.list().catch(()=>{}).then(()=>{SY.pullAll().catch(()=>{});LIB.pull().catch(()=>{});});
   if(Date.now()-SYNC.last>30*60e3&&LIB.idx)setTimeout(()=>SYNC.quick(),5000);}});
 window.gisReady=()=>{AUTH.init();};
@@ -1969,10 +2081,11 @@ function resumeLocal(){let r=null;try{r=JSON.parse(sessionStorage.getItem('lg.re
   P.q=q;P.orig=null;P.src=r.src||'';P.shuffle=!!r.sh;P.repeat=r.rp||'off';
   if(r.rs&&getTrack(r.rs)){P.radioSeed=getTrack(r.rs);P.radioHint=r.rh||null;prefs.radio=true;}
   try{if(CAR&&r.car==='radio'&&P.radioSeed){CAR.applied='radio';CAR.prevMode='radio';CAR.radioLb=P.radioSeed.t||'';CAR.setState({mode:'radio'});}}catch{}
-  P.load(qi,{autoplay:true,pos:r.pos||0});return true;}
+  clog('sigue donde iba tras renovar el acceso');P.load(qi,{autoplay:r.play!==false,pos:r.pos||0});return true;}
 /* el coche arranca solo: suena la emisora del dial (si Firefox deja sonar sin tocar; si no, al primer toque en cualquier sitio, que además pone la pantalla completa) */
 async function carAutostart(){if(!document.body.classList.contains('carmode')||P.current||S.ctrl)return;
   if(await window.__silent)return; // se está renovando el acceso: vuelve en un segundo y arranca entonces
+  if(AUTH.boot&&!AUTH.ok()){const r=await Promise.race([AUTH.boot,new Promise(z=>setTimeout(()=>z('t'),8000))]);if(r===true&&!AUTH.ok())return;} // con acceso la emisora entera está disponible (si no, suena lo guardado)
   if(resumeLocal())return;let c=null;try{c=CAR;}catch{}if(!c)return;
   const pol=AUTH.autoplay();c.tuneCurrent(); // si el navegador no deja sonar sin tocar, se queda preparada (y guardándose) para que el primer toque suene al momento
   if(pol==='allowed')return;
@@ -1989,8 +2102,11 @@ async function boot(){const carFirst=FORCE==='car'||location.hash==='#coche';con
   else if(hv==='pc'||hv==='ordenador'||(!hv&&LS.get('pcStart',0)&&!prefs.carStart))setTimeout(pcOn,0);else if(hv==='coche'||prefs.carStart||(S.firstRun&&device.kind==='car')||(!hv&&LS.get('lastMode','')==='car'&&matchMedia('(display-mode: fullscreen),(display-mode: standalone)').matches))carOn(); // instalada en la tablet: abre directa en el coche
   await Promise.all([SY.loadLocal(),LIB.loadLocal(),AC.init()]);await loadRadioCache();
   try{const st=await IDB.get('kv','stats');if(st&&st.ym===ym()&&st.dev===device.id){S.stats=st;S.statsId=statsName();}}catch{}
-  await DL.init();renderAll();if(AUTH.ok())onAuth();carAutostart();
-  if(!LS.get('authed',false))loadGIS();else setTimeout(loadGIS,8000); // Google Identity solo hace falta para la ventana de entrar: que no compita con la primera canción
+  await DL.init();renderAll();if(AUTH.ok())onAuth();
+  clog('abre '+(FORCE||location.hash||'app')+' · sonar solo: '+AUTH.autoplay()+' · '+(navigator.onLine?'con red':'sin red')+' · acceso '+(AUTH.ok()?Math.round((AUTH.exp-Date.now())/60e3)+' min':'caducado'));
+  if(LS.get('authed',false)&&(window.__ifrFirst||!AUTH.ok()||AUTH.exp-Date.now()<15*60e3))AUTH.boot=AUTH.refresh({boot:true,min:15*60e3});
+  carAutostart();
+  if(!carFirst){if(!LS.get('authed',false))loadGIS();else setTimeout(loadGIS,8000);} // Google Identity solo hace falta para la ventana de entrar (en el coche no se usa: todo sin ventanas)
   if(S.firstRun&&!SIM&&!DEMO&&!FORCE)setTimeout(firstRunSheet,700);if(SIM)simInit();if(DEMO)demoLib();if(new URLSearchParams(location.search).has('medir'))medir();
   if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{STREAM.send();setTimeout(()=>r.update().catch(()=>{}),carFirst?30000:3000);}).catch(()=>{});}
 </script>
@@ -4236,9 +4352,11 @@ const RADIO_RE={
   fito:/\bfito\b|fitipaldis|platero/,
   hit:/dua lipa|taylor swift|ed sheeran|the weeknd|harry styles|bruno mars|coldplay|imagine dragons|maroon 5|katy perry|lady gaga|ariana|billie eilish|olivia rodrigo|sabrina carpenter|miley|rihanna|beyonce|justin bieber|charlie puth|shawn mendes|lewis capaldi|sam smith|\badele\b|doja cat|\blizzo\b|chappell roan|benson boone|teddy swims|tate mcrae|\bsia\b|ava max|ellie goulding|zara larsson|post malone|marshmello|alan walker|the chainsmokers|one ?republic|pitbull|bebe rexha|anne-marie|rita ora|jonas brothers|\blauv\b|khalid|halsey|\bp!?nk\b|selena gomez|demi lovato|camila cabello|meghan trainor|jason derulo|calvin harris|david guetta|avicii|\bkygo\b|tiesto|martin garrix|\bmeduza\b|lost frequencies|robin schulz|felix jaehn|jonas blue|purple disco machine|sophie and the giants|\bhugel\b|\balok\b|\banotr\b|fred again|jax jones|becky hill|\braye\b|myles smith|noah kahan|gracie abrams|lola young|alex warren|\bsombr\b|olivia dean|katseye|\brose\b|\bjennie\b|\blisa\b|\bblackpink\b|\bbts\b|\bjung ?kook\b|tones and i|calum scott|james arthur|kylie minogue|dua|\bcharli xcx\b|\btroye sivan\b|\bconan gray\b|\bglass animals\b|\bthe kid laroi\b|\bshaboozey\b|\bhozier\b|\bmark ambor\b|\bdjo\b|\bcyril\b|\bcalvin\b|\bsigala\b|\bclean bandit\b|\brudimental\b|\bmabel\b|\bdua lipa\b|\bjess glynne\b|\bkesha\b|\bflo rida\b|\bowl city\b|\bfoster the people\b|\bportugal\. the man\b|\bweeknd\b|\bsza\b|\bmiguel\b|\bmaneskin\b|\bloreen\b|\bmans zelmerlow\b|\bduncan laurence\b|\bnathan evans\b|\bariana grande\b|\btaylor\b-x|\bstromae\b|\bmika\b|\bsean paul\b|\bdaddy\b-x|\bimanbek\b|\bsaint jhn\b|\bina wroldsen\b|\btiesto\b|\bkungs\b|\bbob sinclar\b|\bklangkarussell\b/,
   hitEs:/aitana|lola indigo|ana mena|shakira|karol g|sebastian yatra|abraham mateo|ana guerra|\bmaluma\b|enrique iglesias|ricky martin|\bbelinda\b|\bchanel\b|blanca paloma|\bmalu\b-x|\bcarlos baute\b|\bmarta santos\b|\bvicco\b|\bede\b|\bmelody\b|\bnebulossa\b|\brosa linn\b|\bomar montes\b-x|\bmanuel turizo\b|\bcamilo\b|\bmorat\b|\breik\b|\bcnco\b|\bprince royce\b|\bnatti natasha\b|\bbecky g\b/,
-  regg:/bad bunny|anuel|myke towers|quevedo|\bfeid\b|rauw|ozuna|balvin|daddy yankee|maluma|bizarrap|trueno|\bkhea\b|tiago pzk|lit killah|rels b|morad|jhay|\bmora\b|eladio|arcangel|de la ghetto|nicky jam|wisin|yandel|don omar|farruko|\bsech\b|tangana|bryant myers|nengo|ñengo|cosculluela|tego|plan b|zion|lunay|dalex|mike bahia|ryan castro|blessd|peso pluma|natanael|yung beef|kidd keo|saiko|omar montes|jc reyes|beny jr|\bemilia\b|\btini\b|maria becerra|nicki nicole|karol g|young miko|cazzu|anitta|natti natasha|becky g|duki|paulo londra|manuel turizo|sebastian yatra|\bcamilo\b|rvfv|lola indigo|bad gyal|la pantera|abhir|hens|\bdei v\b|\bjere klein\b|\bxavi\b|\bfuerza regida\b|grupo frontera|chencho|\bkevvo\b|alvaro diaz|jay wheeler|lenny tavarez|\bcris mj\b|\bclarent\b|\bluar la l\b|ovy on the drums|\bsky rompiendo\b|tainy|\bboza\b/,
-  trap:/travis scott|\bfuture\b|young thug|lil baby|21 savage|\bdrake\b|metro boomin|playboi carti|lil uzi|\bmigos\b|\boffset\b|\bquavo\b|takeoff|\bgunna\b|juice wrld|xxxtentacion|lil durk|youngboy|don toliver|roddy ricch|pop smoke|lil wayne|kanye|\bye\b|kendrick|j\.? cole|a\$ap|asap rocky|tyler,? the creator|lil nas|megan thee stallion|cardi b|nicki minaj|central cee|kodak black|\bpolo g\b|lil tecca|trippie redd|ski mask|6ix9ine|tekashi|\byeat\b|ken carson|destroy lonely|moneybagg|rod wave|lil yachty|2 chainz|gucci mane|young nudy|\bnav\b|swae lee|rae sremmurd|chief keef|lil skies|suicideboy|lil pump|\bdababy\b|jack harlow|\bmetro\b|\bglorilla\b|ice spice|\bsza\b|\bfuture\b|\bpartynextdoor\b|\bbig sean\b|\btravis\b|\bnle choppa\b|\blil peep\b|\bdenzel curry\b|\bjid\b|\b50 cent\b|\beminem\b|\bsnoop\b|\bdr\.? dre\b/
+  regg:/bad bunny|\banuel\b|myke towers|\bfeid\b|\brauw\b|\bozuna\b|\bbalvin\b|daddy yankee|\bmaluma\b|nicky jam|\bwisin\b|\byandel\b|don omar|farruko|\bsech\b|bryant myers|nengo flow|cosculluela|tego calderon|\bplan b\b|\bzion\b|\blennox\b|\blunay\b|\bdalex\b|justin quiles|ryan castro|\bblessd\b|jhay ?cortez|\bjhayco\b|\bmora\b|arcangel|de la ghetto|karol g|young miko|natti natasha|becky g|chencho|\bkevvo\b|alvaro diaz|jay wheeler|lenny tavarez|\brvfv\b|la pantera|\bquevedo\b|omar montes|\bsaiko\b|bad gyal|\bptazeta\b|\bcris mj\b|\bclarent\b|\bboza\b|\bdei v\b|jere klein|luar la l|\bel alfa\b|rafa pabon|\btainy\b|sky rompiendo|ovy on the drums|calle 13|ivy queen|hector el father|tito el bambino|\bjowell\b|alexis y fido|nio garcia|casper magico|\bdarell\b|\bbrray\b|miky woodz|omy de oro|chris jedi|gaby music|dj nelson|luny tunes|\bnoriel\b|mike bahia|\blyanno\b|kevin roldan|piso 21|gente de zona|\bel chombo\b|j alvarez|kendo kaponi|\byovngchimi\b|\bpaopao\b|\bdfzm\b|\bmyke\b/,
+  trap:/travis scott|\bfuture\b|young thug|lil baby|21 savage|\bdrake\b|metro boomin|playboi carti|lil uzi|\bmigos\b|\boffset\b|\bquavo\b|takeoff|\bgunna\b|juice wrld|xxxtentacion|lil durk|youngboy|don toliver|roddy ricch|pop smoke|lil wayne|kanye|\bye\b|kendrick|j\.? cole|a\$ap|asap rocky|tyler,? the creator|lil nas|megan thee stallion|cardi b|nicki minaj|central cee|kodak black|\bpolo g\b|lil tecca|trippie redd|ski mask|6ix9ine|tekashi|\byeat\b|ken carson|destroy lonely|moneybagg|rod wave|lil yachty|2 chainz|gucci mane|young nudy|\bnav\b|swae lee|rae sremmurd|chief keef|lil skies|suicideboy|lil pump|\bdababy\b|jack harlow|\bmetro\b|\bglorilla\b|ice spice|\bsza\b|\bfuture\b|\bpartynextdoor\b|\bbig sean\b|\btravis\b|\bnle choppa\b|\blil peep\b|\bdenzel curry\b|\bjid\b|\b50 cent\b|\beminem\b|\bsnoop\b|\bdr\.? dre\b|\btyga\b|\byg\b|mac miller|\blogic\b|wiz khalifa|kid cudi|childish gambino|tory lanez|bryson tiller|\b6lack\b|ice cube|\b2pac\b|tupac|notorious b|biggie|\bnas\b|jay-?z|outkast|lil jon|ludacris|t-pain|\bakon\b|ty dolla|kid ink|fetty wap|desiigner|lil dicky|baby keem|joey bada|juicy j|three 6|bobby shmurda|sheck wes|lil mosey|lil tjay|king von|fivio|sleepy hallow|\best gee\b|rich the kid|lil xan|smokepurpp|city girls|saweetie|coi leray|\blatto\b|sexyy red|stormzy|headie one|digga d|aj tracey|skepta|\bj hus\b|\baitch\b|tion wayne|russ millions|\bfredo\b|unknown t|a boogie|freddie gibbs|earl sweatshirt|vince staples|schoolboy q|isaiah rashad|ab-soul|jay rock|joyner lucas|\bnf\b|machine gun kelly|\bmgk\b|g-eazy|blueface|\bcordae\b|busta rhymes|missy elliott|\bnelly\b|\bdmx\b|ja rule|\bthe game\b|\bcoolio\b|warren g|nate dogg|\bxzibit\b|wu-tang|method man|pi'?erre bourne|\bduki\b|\btrueno\b|\bkhea\b|tiago pzk|lit killah|paulo londra|yung beef|kidd keo|\bmorad\b|beny jr|\beladio\b|\bcazzu\b|\bysy a\b|neo pistea|\bbhavi\b|\bc\.?r\.?o\b|homer el mero mero|cecilio g|pimp flaco|la zowi|\bwos\b|\bmilo j\b|\bjc reyes\b|natos y waor|\bhard gz\b|cruz cafune|\bdelaossa\b|recycled j|fernandocosta|al safir|soto asa|kase\.?o|violadores del verso|\bsfdk\b|\bnach\b|\bfoyone\b|\btoteking\b|\bshotta\b|\bayax\b|\bprok\b|el jincho|\bswit eme\b|\bguxo\b/
 };
+/* REGGAE FM es reguetón de verdad: fuera corridos y regional mexicano, pop latino melódico, trap y rap (van a TRAP FM) y el pop urbano de ellas (va a DIVAS FM) */
+const RADIO_NO={regg:/peso pluma|natanael cano|fuerza regida|grupo frontera|junior h\b|eslabon armado|\bxavi\b|ivan cornejo|gabito ballesteros|tito double p|grupo firme|carin leon|christian nodal|\bcamilo\b|sebastian yatra|\bmorat\b|\breik\b|\bcnco\b|\bduki\b|\btrueno\b|\bkhea\b|tiago pzk|lit killah|paulo londra|yung beef|kidd keo|\bmorad\b|beny jr|\beladio\b|\bcazzu\b|nicki nicole|\bysy a\b|\bwos\b|tangana|rels b|\bhens\b|nathy peluso|\bmilo j\b|\bbhavi\b|neo pistea|\bl-?gante\b|la joaqui|\bemilia\b|\btini\b|maria becerra|lola indigo|aitana|ana mena|\brosalia\b|shakira|\banitta\b|alejandro sanz|pablo alboran|manuel turizo|\bjc reyes\b|dellafuente|bizarrap/};
 /* emisoras nuevas: Divas FM, Pop Español FM, Rock FM y la del día (cambia cada día de temática) */
 Object.assign(RADIO_RE,{
   divas:/\bemilia\b|\btini\b|maria becerra|nicki nicole|aitana|rosalia|olivia rodrigo|sabrina carpenter|lola indigo|ana mena|dua lipa|ariana|taylor swift|billie eilish|miley|chappell roan|tate mcrae|\blali\b|\bnathy peluso\b|\bbelinda\b|\bdanna\b|\bkenia os\b|\bmon laferte\b|\bsofia reyes\b|\bkaty perry\b|\bselena gomez\b|\bdemi lovato\b|\bcamila cabello\b|\bdoja cat\b|\bzara larsson\b|\bava max\b|\bchanel\b|\bede\b|\bvicco\b|\brosa linn\b|\blaura pausini\b|\bpaulina rubio\b|\bthalia\b|\bshakira\b|\blady gaga\b|\bgracie abrams\b|\blorde\b|\blana del rey\b|\bhalsey\b|\bbelen aguilera\b|\bnatalia lacunza\b|\bnatalia\b-x|\bamaia\b|\bana guerra\b|\bmalu\b|\brihanna\b|\bbeyonce\b|\bsia\b|\badele\b|\bcharli xcx\b|\braye\b|\blola young\b|\bolivia dean\b|\brose\b|\bjennie\b|\blisa\b|\bblackpink\b|\bkatseye\b|\btini stoessel\b|\bmaria jose\b|\bmorena\b-x|\bsamantha\b-x|\bbad gyal\b|\byoung miko\b/,
@@ -4284,15 +4402,24 @@ const TASTE=(()=>{let o=null;try{o=JSON.parse(localStorage.getItem('gu_taste')||
 let tasteT=0;function noteTaste(t,secs){if(!t||t.test)return;const full=secs>=60||(t.du&&secs>=t.du*.6);
   if(full)TASTE.p[t.id]=(TASTE.p[t.id]||0)+1;else if(secs<20&&!(t.du&&t.du<40))TASTE.s[t.id]=(TASTE.s[t.id]||0)+1;else return;
   clearTimeout(tasteT);tasteT=setTimeout(()=>{try{localStorage.setItem('gu_taste',JSON.stringify(TASTE));}catch{}},4000);}
-function tasteW(id){const p=TASTE.p[id]||0,k=TASTE.s[id]||0;let w=1+Math.min(p,12)*.06;if(k>p)w*=Math.max(.2,1-.22*(k-p));if(S.likes[id])w*=1.4;return w;}
+function tasteW(id){const p=TASTE.p[id]||0,k=TASTE.s[id]||0;let w=1+Math.min(p,12)*.025;if(k>p)w*=Math.max(.25,1-.2*(k-p));if(S.likes[id])w*=1.3;return w;}
+/* lo que ha sonado y cuándo (en este aparato): una canción que acaba de sonar tarda días en volver, como en una radio de verdad */
+const HIST=(()=>{try{const o=JSON.parse(localStorage.getItem('gu_hist')||'null');return o&&typeof o==='object'?o:{};}catch{return{};}})();
+function noteHist(id){if(!id)return;HIST[id]=Date.now();const ks=Object.keys(HIST);if(ks.length>4000)ks.sort((a,b)=>HIST[a]-HIST[b]).slice(0,ks.length-3500).forEach(k=>delete HIST[k]);
+  clearTimeout(noteHist.t);noteHist.t=setTimeout(()=>{try{localStorage.setItem('gu_hist',JSON.stringify(HIST));}catch{}},3000);}
+function histW(id){const ts=HIST[id];if(!ts)return 1;const h=(Date.now()-ts)/3600e3;return h<3?.01:h<12?.03:h<24?.1:h<48?.25:h<96?.5:h<168?.75:1;}
 /* programación de emisora: como una radio de verdad. Lo nuevo suena más (en HIT FM mucho más), nunca el mismo artista seguido
    y una canción no se repite hasta que han pasado bastantes. */
-const ROT={hit:[4,2.2,1,.35],divas:[2.4,1.6,1,.6],regg:[2.4,1.6,1,.6],trap:[2.4,1.6,1,.6]};
+const ROT={hit:[2.6,1.6,1,.45],divas:[1.6,1.25,1,.8],regg:[1.6,1.25,1,.8],trap:[1.6,1.25,1,.8]};
 function radioOrder(key,ids,avoid){ids=[...new Set(ids)].filter(id=>S.tracks.get(id));const N=ids.length;if(N<3)return shuffleArr(ids);
   const kind=key.startsWith('rad:')?key.slice(4):key,prof=ROT[kind]||[1.25,1.1,1,.9];
   const tr=ids.map(id=>S.tracks.get(id)),dts=tr.map(t=>dateOf(t)??0),ord=ids.map((_,i)=>i).sort((a,b)=>dts[b]-dts[a]);
-  const w=new Float64Array(N);ord.forEach((i,r)=>{const q=r/N;w[i]=(q<.15?prof[0]:q<.4?prof[1]:q<.75?prof[2]:prof[3])*tasteW(ids[i]);});
-  const art=tr.map(t=>norm(t.aa||t.a||'?')),nArt=new Set(art).size;
+  const art=tr.map(t=>norm(t.aa||t.a||'?')),nArt=new Set(art).size,cnt=new Map();art.forEach(a=>cnt.set(a,(cnt.get(a)||0)+1));
+  /* peso de cada canción: lo nuevo algo más, lo que acaba de sonar mucho menos (días), los artistas con muchísimas canciones repartidos
+     (que nadie acapare la emisora) y tus votos: ▲ suma a la canción y a su artista; un ▼ suelto ya le quita peso a ese artista aquí */
+  const K=Math.max(8,Math.round(N/30)),fb=fbOf(key),LR=learned(key),upTg=new Set(Object.entries(LR.up.tg||{}).filter(([g,n])=>n>=2&&!(LR.dn.tg||{})[g]).map(([g])=>g)); // estilos que te gustan aquí: suenan algo más
+  const w=new Float64Array(N);ord.forEach((i,r)=>{const q=r/N,id=ids[i],f=featOf(tr[i]);let x=(q<.15?prof[0]:q<.4?prof[1]:q<.75?prof[2]:prof[3])*tasteW(id)*histW(id)*Math.min(1,K/cnt.get(art[i]));
+    if(fb.up.has(id))x*=1.8;const u=LR.up.pa[f.pa]||0,dn=LR.dn.pa[f.pa]||0;if(u>dn)x*=Math.min(2.2,1+.35*(u-dn));else if(dn>u)x*=.35;if(upTg.size&&f.tg.some(g=>upTg.has(g)))x*=1.3;w[i]=x;});
   const L=Math.min(260,Math.max(N,40)),gapS=Math.min(N-1,Math.max(12,Math.floor(N*.55))),gapA=Math.min(4,nArt-1);
   const last=new Int32Array(N).fill(-1e6),lastA=new Map(),out=[];
   if(avoid){let k=-1;for(const id of [...avoid].slice(-gapS)){const i=ids.indexOf(id);if(i>=0)last[i]=k;k--;}}
@@ -4311,20 +4438,28 @@ function capArtists(ids,caps,def){const by=new Map();for(const id of ids){const 
   const out=[];for(const {cap,ids:L} of by.values()){const sh=shuffleArr(L.slice());out.push(...sh.slice(0,cap));}return out;}
 /* Con clave de Claude, cada artista de tu biblioteca se clasifica una sola vez (emisoras + etiquetas de estilo) y se guarda en este aparato.
    Las emisoras y la radio de canción usan eso; sin clave, se tira de las listas de nombres de arriba. */
+const ART_V=2;if(LS.get('artTagsV',0)!==ART_V){LS.set('artTags',{});LS.set('artTagsV',ART_V);LS.set('artMT','');} // criterio nuevo: se vuelven a clasificar
 const ART=LS.get('artTags',{}),TAGS={busy:false,last:0};
+/* las etiquetas son las mismas en el coche, el móvil y el ordenador: se guardan en tu Drive (zona privada de la app) */
+const ARTS={async pull(){try{const f=AD.ids&&AD.ids['artistas.json'];if(!f||(f.modifiedTime&&f.modifiedTime===LS.get('artMT','')))return;
+    const x=await AD.read('artistas.json');if(f.modifiedTime)LS.set('artMT',f.modifiedTime);if(!x||x.v!==ART_V||!x.tags)return;let n=0;
+    for(const [k,v] of Object.entries(x.tags))if(v&&!ART[k]){ART[k]=v;n++;}if(n){LS.set('artTags',ART);radioCache={sig:'',m:{}};clog('etiquetas de artistas desde Drive: '+n);}}catch{}},
+  push:debounce(async()=>{if(!AUTH.ok())return;try{await AD.write('artistas.json',{v:ART_V,at:Date.now(),tags:ART});const f=AD.ids&&AD.ids['artistas.json'];if(f&&f.modifiedTime)LS.set('artMT',f.modifiedTime);}catch{}},15000)};
 const artTag=t=>ART[norm(t.aa||t.a||'')]||null;
 async function tagArtists(){if(TAGS.busy||!(S.cfg.apiKey||'').trim()||!navigator.onLine||Date.now()-TAGS.last<60000)return;
   const todo=S.artists.map(a=>a.name).filter(n=>n&&!ART[norm(n)]);if(!todo.length)return;TAGS.busy=true;TAGS.last=Date.now();let done=0;
   try{for(let i=0;i<todo.length&&i<900;i+=120){const part=todo.slice(i,i+120);
       const out=await claudeAsk('Clasifica estos artistas musicales para montar las emisoras de un reproductor personal en España. Usa lo que sabes de cada uno; si no lo conoces, deduce por el nombre lo que puedas y, si no, deja las listas vacías.\n'+
         'Para CADA artista responde una línea JSON y nada más: {"n":número,"e":[emisoras],"s":[etiquetas]}\n'+
-        '"e": cero, una o varias de: "hit" (pop comercial y éxitos de radiofórmula, dance-pop, pop en español), "regg" (reggaetón y música urbana latina, trap en español), "trap" (trap y hip-hop de EE. UU. o Reino Unido, en inglés), "rock" (rock de cualquier tipo, incluido rock español).\n'+
+        '"e": cero, una o varias de: "hit" (pop comercial y éxitos de radiofórmula, dance-pop, pop en español), "regg" (SOLO reguetón, perreo y dembow: Bad Bunny, Karol G, Feid, Rauw Alejandro, Myke Towers… NO corridos ni regional mexicano, NO pop latino melódico como Camilo o Morat, NO trap ni rap, NO cantantes pop que a veces hacen urbano como Emilia o Aitana), "trap" (trap, drill y rap/hip-hop, en inglés o en español: Travis Scott, Drake, Central Cee, Duki, Trueno, Yung Beef, Morad, Eladio Carrión…), "rock" (rock de cualquier tipo, incluido rock español).\n'+
         '"s": de 3 a 6 etiquetas cortas en minúsculas que capten su esencia: género concreto, escena, idioma, década principal, energía (p. ej. "rock urbano","español","2000s","guitarras","melancólico").\n\nARTISTAS\n'+part.map((n,k)=>k+' '+n).join('\n'),Math.min(8000,400+part.length*45));
       for(const raw of out.split('\n')){const line=raw.trim().replace(/^```(json)?/,'').replace(/```$/,'').replace(/,$/,'').trim();if(!line)continue;let o;try{o=JSON.parse(line);}catch{continue;}const nm=o&&part[+o.n];if(!nm)continue;
         ART[norm(nm)]={e:(Array.isArray(o.e)?o.e:[]).map(String).filter(x=>['hit','regg','trap','rock'].includes(x)),s:(Array.isArray(o.s)?o.s:[]).map(x=>norm(String(x))).filter(Boolean).slice(0,6)};done++;}
       LS.set('artTags',ART);}
-    if(done){radioCache={sig:'',m:{}};try{CAR&&CAR.say('EMISORAS AFINADAS · '+done+' ARTISTAS');}catch{}}}
+    if(done){radioCache={sig:'',m:{}};ARTS.push();clog('artistas clasificados por Claude: '+done);try{CAR&&CAR.say('EMISORAS AFINADAS · '+done+' ARTISTAS');}catch{}}}
   catch(e){console.warn('etiquetas',e);}finally{TAGS.busy=false;}}
+function mainArtist(t){const ap=artistsOf(t);let pa=ap[0]||norm(t.a||'');
+  if(/bizarrap|\bbzrp\b/.test(pa)){const m=norm(t.t||'').match(/^(.+?)\s*(?:[:|]|-)\s*bzrp/);pa=ap[1]||(m&&m[1].trim())||pa;}return pa;}
 function radioKind(t,k){const a=t._na!=null?t._na:(t._na=norm(t.a||'')),g=t._ng!=null?t._ng:(t._ng=norm(t.g||''));if(k==='fito')return RADIO_RE.fito.test(a)||RADIO_RE.fito.test(norm(t.aa||''));
   if(k==='divas'){ // pop cantado por mujeres: la primera que firma tiene que ser ella y nada de colaboraciones con reguetoneros ni chicos que manden
     const [pa,...co]=artistsOf(t);if(!(RADIO_RE.divas.test(pa)||/carita triste/.test(norm(t.t||''))))return false;if(RADIO_RE.divasNo.test(pa))return false;
@@ -4338,12 +4473,15 @@ function radioKind(t,k){const a=t._na!=null?t._na:(t._na=norm(t.a||'')),g=t._ng!
     if(RADIO_RE.fito.test(a)||RADIO_RE.regg.test(a)||RADIO_RE.trap.test(a)||RADIO_RE.popes.test(a)||RADIO_RE.rockes.test(a)||KIND_RE.rock.test(a)||KIND_RE.barrio.test(a)||KIND_RE.pijo.test(a))return false;
     const tg=artTag(t);if(tg&&(tg.e.length||tg.s.length))return tg.e.includes('hit')&&!tg.s.some(x=>/espanol|spanish|latin|flamenc|rumba|cantautor|indie|rock|copla|balada/.test(x))&&langOf(t)!=='es';
     return /\bpop\b|dance|edm|electro|house/.test(g)&&!/latin|espa|rock|metal|punk|flamenc|rumba|indie|cantautor|reggaet|urbano/.test(g)&&langOf(t)!=='es';}
+  if(k==='regg'||k==='trap'){const pa=mainArtist(t); // manda quien firma la canción, no los invitados
+    if(k==='regg'?RADIO_NO.regg.test(pa):RADIO_RE.regg.test(pa))return false;if(RADIO_RE[k].test(pa))return true;
+    const tg=artTag(t);if(tg&&(tg.e.length||tg.s.length))return tg.e.includes(k);
+    if(k==='regg')return /reggaet|regueton|dembow|perreo|urbano latino|latin urban/.test(g)&&!/corrido|regional|banda|nortena|bachata|salsa|\btrap\b/.test(g);
+    return /\btrap\b|hip.?hop|\brap\b|drill|grime/.test(g)&&!/reggaet|regueton|dembow/.test(g);}
   const tg=artTag(t);if(tg&&(tg.e.length||tg.s.length))return tg.e.includes(k);if(RADIO_RE[k].test(a))return true;
-  if(k==='regg')return /reggaet|regueton|urbano latino|dembow|latin trap|latin urban|perreo/.test(g);
-  if(k==='trap')return /\btrap\b|hip.?hop|\brap\b/.test(g)&&!/latin|espa|urbano|reggaet/.test(g)&&!RADIO_RE.regg.test(a);
   if(k==='hit')return /\bpop\b|dance|edm|electro.?pop/.test(g)&&!/rock|metal|punk/.test(g);return false;}
 let radioCache={sig:'',m:{}};
-const radioSig=()=>S.tracks.size+':'+S.allIds.length+':'+DIA_KEY()+':'+FBV+':'+Object.keys(S.likes).length+':'+((S.cfg.rules&&JSON.stringify(S.cfg.rules).length)||0);
+const radioSig=()=>'v4:'+S.tracks.size+':'+S.allIds.length+':'+DIA_KEY()+':'+FBV+':'+Object.keys(S.likes).length+':'+((S.cfg.rules&&JSON.stringify(S.cfg.rules).length)||0)+':'+Object.keys(ART).length;
 /* las emisoras ya calculadas se guardan en el aparato: al encender, la del dial está lista al momento (calcularla con 11.000 canciones lleva su rato en la tablet) */
 const saveRadioCache=debounce(()=>{try{IDB.put('kv','radioCache',radioCache).catch(()=>{});}catch{}},4000);
 async function loadRadioCache(){try{const rc=await IDB.get('kv','radioCache');if(rc&&rc.m&&rc.sig===radioSig()&&radioCache.sig!==rc.sig)radioCache=rc;}catch{}}
@@ -4352,8 +4490,8 @@ function radioIds(k){const sig=radioSig();if(radioCache.sig!==sig)radioCache={si
   if(k==='rockes')ids=capArtists(ids,[[/\bmarea\b|\bkutxi\b/,1e9],[/platero/,4],[/extremoduro|\brobe\b/,30]],15); // que mande Marea y Platero apenas salga
   if(k==='hit'){ // radiofórmula: lo de los últimos años manda; nada de antes de 2008 salvo lo que te guste; pocos artistas españoles
     ids=ids.filter(id=>{const t=S.tracks.get(id),y=parseInt(t.y,10);return !(y>1900&&y<2008)||S.likes[id];});
-    ids=capArtists(ids,[[RADIO_RE.hitEs,5]],14);}
-  if(k==='divas'||k==='popes'||k==='regg'||k==='trap')ids=capArtists(ids,[],k==='popes'?18:24);
+    ids=capArtists(ids,[[RADIO_RE.hitEs,8]],30);}
+  // el resto de emisoras ya no recortan artistas: entra todo lo que encaja y el reparto lo hace la programación (radioOrder)
   radioCache.m[k]=ids;saveRadioCache();return ids;}
 function carKind(t){if(!t)return null;const a=norm(t.a||''),g=norm(t.g||'');
   if(KIND_RE.fito.test(a))return 'fito';if(KIND_RE.diva.test(a))return 'diva';if(RADIO_RE.trap.test(a))return 'trap';
@@ -4365,8 +4503,8 @@ function carKind(t){if(!t)return null;const a=norm(t.a||''),g=norm(t.g||'');
 const STATIONS_FM=td=>[
   {f:22,n:'FITO FM',hd:'FITO FM',full:'FITO FM',key:'rad:fito',d:'Fito y Fitipaldis y Platero y Tú'},
   {f:26.5,n:'HIT FM',hd:'HIT FM',full:'HIT FM',key:'rad:hit',d:'Los éxitos de ahora, como la radio'},
-  {f:31,n:'REGGAE FM',hd:'REGGAE FM',full:'REGGAE FM',key:'rad:regg',d:'Reguetón y urbano latino'},
-  {f:35.5,n:'TRAP FM',hd:'TRAP FM',full:'TRAP FM',key:'rad:trap',d:'Trap y rap de EE. UU.'},
+  {f:31,n:'REGGAE FM',hd:'REGGAE FM',full:'REGGAE FM',key:'rad:regg',d:'Reguetón y perreo de verdad (Bad Bunny, Karol G, Feid, Rauw, Myke Towers, Quevedo…). Nada de corridos, pop latino melódico, trap/rap ni pop urbano de cantantes pop'},
+  {f:35.5,n:'TRAP FM',hd:'TRAP FM',full:'TRAP FM',key:'rad:trap',d:'Trap, drill y rap: de EE. UU. y Reino Unido y también en español (Travis Scott, Drake, Central Cee, Duki, Trueno, Yung Beef, Morad…)'},
   {f:40,n:'DIVAS FM',hd:'DIVAS FM',full:'DIVAS FM',key:'rad:divas',d:'Pop cantado por ellas: Emilia, Aitana, Sabrina Carpenter, Billie Eilish…'},
   {f:44.5,n:'POP Ñ FM',hd:'POP Ñ FM',full:'POP Ñ FM',key:'rad:popes',d:'Taburete, Guitarricadelafuente, Alborán… español tranquilo'},
   {f:49,n:'ROCK FM',hd:'ROCK FM',full:'ROCK FM',key:'rad:rockes',d:'Rock español: Marea por delante, Extremoduro y compañía'},
@@ -4490,7 +4628,7 @@ class CarUI extends Component{
       const played=new Set(P.q.slice(0,P.qi+1));P.q=P.q.slice(0,P.qi+1).concat(ids.filter(id=>!played.has(id)));P.radioPool=ids;renderQueueIfOpen();this.say('RADIO AFINADA · '+ids.length+' CANCIONES');
     }catch(e){console.warn('radio',e);}}
   shufStation(){const s=this.ST[this.state.stn]||this.ST[0],cur=P.current,ids=collIds(s.key).filter(id=>!cur||id!==cur.id);
-    P.q=(cur?[cur.id]:[]).concat(shuffleArr(ids));P.qi=0;P.orig=null;P.shuffle=true;P.src=s.key;}
+    P.q=(cur?[cur.id]:[]).concat(/^(rad:|likes)/.test(s.key)?radioOrder(s.key,ids,cur?[cur.id]:null):shuffleArr(ids));P.qi=0;P.orig=null;P.shuffle=true;P.src=s.key;}
   // la tecla se puede pulsar varias veces seguidas: el modo se aplica cuando dejas de pulsar (así pasar por RADIO para llegar a +1 no cambia la cola)
   cycle(){const MO=['shuf','radio','once'],st=this.state,m=MO[(MO.indexOf(st.mode)+1)%3];
     this.setState({mode:m});this.say({shuf:'ALEATORIO',radio:'RADIO DE ESTA CANCIÓN',once:'ESTA SONARÁ UNA VEZ MÁS'}[m]);
@@ -4504,7 +4642,7 @@ class CarUI extends Component{
   tune(k){const s=this.ST[k];if(s.key==='dj'){const ids=(LS.get('carDjIds',[])||[]).filter(id=>S.tracks.has(id));if(ids.length){P.play(ids,0,'dj',{shuffle:false});this.say('EMISORA 45 Hz · CLAUDE DJ');}else{this.say('PULSA DJ Y PIDE MÚSICA');}return;}
     const ids=collIds(s.key);if(!ids.length){this.say(!S.tracks.size?'SIN MÚSICA TODAVÍA':s.key==='likes'?'SIN FAVORITOS · DOS TOQUES EN LA PORTADA':(s.full||s.n)+' · SIN CANCIONES AÚN');return;}
     clearTimeout(this.cyT);prefs.radio=false;P.radioSeed=null;this.radioLb='';P.repeat='off';this.applied='shuf';this.prevMode='shuf';LS.set('carMode','shuf');this.setState({mode:'shuf'});
-    LS.set('carStn',s.key);P.play(ids,-1,s.key,{shuffle:true});this.say('EMISORA '+s.f+' Hz · '+(s.full||s.n));}
+    LS.set('carStn',s.key);clog('emisora '+(s.full||s.n)+' ('+ids.length+' canciones, '+(netOK()?'con Google':'solo lo guardado')+')');P.play(ids,-1,s.key,{shuffle:true});this.say('EMISORA '+s.f+' Hz · '+(s.full||s.n));}
   menuDo(k){const acts=[()=>{carOff();go('buscar');},()=>carLib('pl'),()=>carLib('ar'),()=>carLib('al'),()=>this.djStart(),()=>openEq(),()=>{carOff();if(FORCE==='car')go('ajustes');}];
     if(k===7){this.closeScr('');return;}this.closeScr('');setTimeout(()=>{try{acts[k]();}catch(e){console.warn(e);}},FL.total+80);}
   /* ----- Claude DJ por voz ----- */
