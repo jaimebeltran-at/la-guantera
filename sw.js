@@ -3,7 +3,7 @@
    2) Las fuentes de Google se guardan una vez y no se vuelven a pedir.
    3) ./stream/<id>: la canción empieza a sonar en cuanto llegan los primeros trozos de Drive. El acceso a Google va en la
       cabecera (nunca en la dirección) y, cuando termina de llegar, la canción se guarda entera en el aparato para la próxima vez. */
-const V='guantera-v36',FONTS='gu-fonts-1',KEEP=[V,FONTS];
+const V='guantera-v37',FONTS='gu-fonts-1',KEEP=[V,FONTS];
 const SHELL=['./','./index.html','./manifest.webmanifest','./icon.svg','./manifest-coche.webmanifest','./manifest-ordenador.webmanifest','./manifest-movil.webmanifest','./coche.html','./ordenador.html','./movil.html','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL.map(u=>new Request(u,{cache:'reload'})))).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>!KEEP.includes(k)).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
